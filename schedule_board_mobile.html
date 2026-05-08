@@ -1,0 +1,658 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Schedule Board</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --panel: #171a22;
+      --panel2: #20242f;
+      --text: #f3f4f6;
+      --muted: #9ca3af;
+      --border: #2d3340;
+      --accent: #6aa6ff;
+      --danger: #ff6b6b;
+      --yellow: #ffd166;
+      --green: #7bd88f;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      background: rgba(15, 17, 23, 0.96);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      padding: 12px;
+    }
+
+    .month-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    button {
+      border: 0;
+      border-radius: 12px;
+      padding: 10px 12px;
+      background: var(--panel2);
+      color: var(--text);
+      font-weight: 600;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    button:active {
+      transform: scale(0.98);
+    }
+
+    .date-strip {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+      scrollbar-width: none;
+    }
+
+    .date-strip::-webkit-scrollbar {
+      display: none;
+    }
+
+    .date-btn {
+      min-width: 56px;
+      padding: 8px 6px;
+      border-radius: 14px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      text-align: center;
+      color: var(--muted);
+    }
+
+    .date-btn.active {
+      background: var(--accent);
+      color: #06101f;
+      border-color: var(--accent);
+    }
+
+    .date-btn .day {
+      font-size: 18px;
+      font-weight: 800;
+    }
+
+    .date-btn .week {
+      font-size: 12px;
+    }
+
+    main {
+      padding: 12px;
+      padding-bottom: 96px;
+    }
+
+    .toolbar {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .search {
+      border: 1px solid var(--border);
+      background: var(--panel);
+      color: var(--text);
+      border-radius: 12px;
+      padding: 11px;
+      font-size: 16px;
+      min-width: 0;
+    }
+
+    .section-title {
+      color: var(--muted);
+      font-size: 13px;
+      margin: 10px 0;
+    }
+
+    .event-card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-left: 6px solid var(--accent);
+      border-radius: 16px;
+      padding: 12px;
+      margin-bottom: 10px;
+    }
+
+    .event-card.warn {
+      border-left-color: var(--yellow);
+    }
+
+    .event-card.done {
+      border-left-color: var(--green);
+      opacity: 0.75;
+    }
+
+    .event-card.danger {
+      border-left-color: var(--danger);
+    }
+
+    .event-time {
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+
+    .event-title {
+      font-size: 17px;
+      font-weight: 800;
+      margin-bottom: 6px;
+    }
+
+    .event-meta {
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.6;
+      overflow-wrap: anywhere;
+    }
+
+    .fab {
+      position: fixed;
+      right: 16px;
+      bottom: 18px;
+      width: 64px;
+      height: 64px;
+      border-radius: 999px;
+      background: var(--accent);
+      color: #06101f;
+      font-size: 30px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+      z-index: 15;
+    }
+
+    .sheet-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.55);
+      display: none;
+      z-index: 20;
+    }
+
+    .sheet-backdrop.show {
+      display: block;
+    }
+
+    .sheet {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      max-height: 92vh;
+      overflow-y: auto;
+      background: var(--panel);
+      border-radius: 22px 22px 0 0;
+      padding: 16px;
+      border-top: 1px solid var(--border);
+    }
+
+    .sheet h2 {
+      margin: 0 0 12px;
+      font-size: 18px;
+    }
+
+    label {
+      display: block;
+      font-size: 12px;
+      color: var(--muted);
+      margin: 10px 0 4px;
+    }
+
+    input, textarea, select {
+      width: 100%;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      color: var(--text);
+      border-radius: 12px;
+      padding: 11px;
+      font-size: 16px;
+    }
+
+    textarea {
+      min-height: 76px;
+      resize: vertical;
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 14px;
+    }
+
+    .save {
+      background: var(--accent);
+      color: #06101f;
+    }
+
+    .delete {
+      background: #3a1d22;
+      color: #ff9aa2;
+    }
+
+    .empty {
+      color: var(--muted);
+      text-align: center;
+      margin-top: 40px;
+    }
+
+    .backup-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    @media (min-width: 720px) {
+      body {
+        max-width: 720px;
+        margin: 0 auto;
+        border-left: 1px solid var(--border);
+        border-right: 1px solid var(--border);
+        min-height: 100vh;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="month-row">
+    <button id="prevMonth">＜</button>
+    <strong id="monthLabel">2026年5月</strong>
+    <button id="nextMonth">＞</button>
+  </div>
+
+  <div class="date-strip" id="dateStrip"></div>
+</header>
+
+<main>
+  <div class="toolbar">
+    <input class="search" id="searchInput" placeholder="物件名・担当・内容で検索">
+    <button id="todayBtn">今日</button>
+  </div>
+
+  <div class="backup-row">
+    <button id="exportBtn">バックアップ</button>
+    <button id="importBtn">復元</button>
+  </div>
+  <input id="importFile" type="file" accept="application/json" hidden>
+
+  <div class="section-title" id="selectedDateLabel"></div>
+  <div id="eventList"></div>
+</main>
+
+<button class="fab" id="addBtn">＋</button>
+
+<div class="sheet-backdrop" id="sheetBackdrop">
+  <div class="sheet">
+    <h2 id="sheetTitle">予定を追加</h2>
+
+    <input type="hidden" id="eventId">
+
+    <label>日付</label>
+    <input type="date" id="dateInput">
+
+    <div class="form-row">
+      <div>
+        <label>開始</label>
+        <input type="time" id="startInput">
+      </div>
+      <div>
+        <label>終了</label>
+        <input type="time" id="endInput">
+      </div>
+    </div>
+
+    <label>場所・物件名</label>
+    <input id="placeInput" placeholder="例：LAKE Terrace 3-R1">
+
+    <label>内容</label>
+    <input id="titleInput" placeholder="例：清掃 / チェックイン / 点検">
+
+    <div class="form-row">
+      <div>
+        <label>担当</label>
+        <input id="assigneeInput" placeholder="AirBnB">
+      </div>
+      <div>
+        <label>人数</label>
+        <input id="peopleInput" type="number" min="0" placeholder="2">
+      </div>
+    </div>
+
+    <label>状態</label>
+    <select id="statusInput">
+      <option value="normal">通常</option>
+      <option value="warn">注意</option>
+      <option value="danger">緊急</option>
+      <option value="done">完了</option>
+    </select>
+
+    <label>メモ</label>
+    <textarea id="noteInput" placeholder="備考を入力"></textarea>
+
+    <div class="actions">
+      <button class="delete" id="deleteBtn">削除</button>
+      <button class="save" id="saveBtn">保存</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const STORAGE_KEY = "mobile_schedule_events_v1";
+
+  let current = new Date();
+  let selectedDate = toDateString(new Date());
+  let events = loadEvents();
+
+  const dateStrip = document.getElementById("dateStrip");
+  const monthLabel = document.getElementById("monthLabel");
+  const selectedDateLabel = document.getElementById("selectedDateLabel");
+  const eventList = document.getElementById("eventList");
+  const searchInput = document.getElementById("searchInput");
+
+  const sheetBackdrop = document.getElementById("sheetBackdrop");
+  const sheetTitle = document.getElementById("sheetTitle");
+
+  const eventId = document.getElementById("eventId");
+  const dateInput = document.getElementById("dateInput");
+  const startInput = document.getElementById("startInput");
+  const endInput = document.getElementById("endInput");
+  const placeInput = document.getElementById("placeInput");
+  const titleInput = document.getElementById("titleInput");
+  const assigneeInput = document.getElementById("assigneeInput");
+  const peopleInput = document.getElementById("peopleInput");
+  const statusInput = document.getElementById("statusInput");
+  const noteInput = document.getElementById("noteInput");
+
+  document.getElementById("prevMonth").onclick = () => {
+    current.setMonth(current.getMonth() - 1);
+    selectedDate = toDateString(new Date(current.getFullYear(), current.getMonth(), 1));
+    render();
+  };
+
+  document.getElementById("nextMonth").onclick = () => {
+    current.setMonth(current.getMonth() + 1);
+    selectedDate = toDateString(new Date(current.getFullYear(), current.getMonth(), 1));
+    render();
+  };
+
+  document.getElementById("todayBtn").onclick = () => {
+    current = new Date();
+    selectedDate = toDateString(new Date());
+    render();
+    scrollActiveDateIntoView();
+  };
+
+  document.getElementById("addBtn").onclick = () => openSheet();
+
+  sheetBackdrop.addEventListener("click", e => {
+    if (e.target === sheetBackdrop) closeSheet();
+  });
+
+  document.getElementById("saveBtn").onclick = saveEvent;
+  document.getElementById("deleteBtn").onclick = deleteEvent;
+  searchInput.oninput = renderEvents;
+
+  document.getElementById("exportBtn").onclick = exportBackup;
+  document.getElementById("importBtn").onclick = () => document.getElementById("importFile").click();
+  document.getElementById("importFile").onchange = importBackup;
+
+  function render() {
+    renderDates();
+    renderEvents();
+  }
+
+  function renderDates() {
+    const year = current.getFullYear();
+    const month = current.getMonth();
+    const lastDay = new Date(year, month + 1, 0).getDate();
+
+    monthLabel.textContent = `${year}年${month + 1}月`;
+    dateStrip.innerHTML = "";
+
+    for (let d = 1; d <= lastDay; d++) {
+      const date = new Date(year, month, d);
+      const dateStr = toDateString(date);
+      const count = events.filter(e => e.date === dateStr).length;
+      const btn = document.createElement("button");
+      btn.className = "date-btn" + (dateStr === selectedDate ? " active" : "");
+      btn.innerHTML = `
+        <div class="day">${d}</div>
+        <div class="week">${["日","月","火","水","木","金","土"][date.getDay()]}${count ? "・" + count : ""}</div>
+      `;
+      btn.onclick = () => {
+        selectedDate = dateStr;
+        render();
+      };
+      dateStrip.appendChild(btn);
+    }
+  }
+
+  function renderEvents() {
+    const keyword = searchInput.value.trim().toLowerCase();
+
+    const dayEvents = events
+      .filter(e => e.date === selectedDate)
+      .filter(e => {
+        if (!keyword) return true;
+        const text = [e.title, e.place, e.assignee, e.note].join(" ").toLowerCase();
+        return text.includes(keyword);
+      })
+      .sort((a, b) => (a.startTime || "").localeCompare(b.startTime || ""));
+
+    selectedDateLabel.textContent = formatDateLabel(selectedDate);
+    eventList.innerHTML = "";
+
+    if (dayEvents.length === 0) {
+      eventList.innerHTML = `<div class="empty">この日の予定はありません</div>`;
+      return;
+    }
+
+    for (const ev of dayEvents) {
+      const card = document.createElement("div");
+      card.className = `event-card ${ev.status || "normal"}`;
+      card.innerHTML = `
+        <div class="event-time">${ev.startTime || "--:--"} - ${ev.endTime || "--:--"}</div>
+        <div class="event-title">${escapeHtml(ev.title || "無題")}</div>
+        <div class="event-meta">
+          ${escapeHtml(ev.place || "")}<br>
+          担当：${escapeHtml(ev.assignee || "-")} / 人数：${ev.people || "-"}<br>
+          ${ev.note ? "メモ：" + escapeHtml(ev.note) : ""}
+        </div>
+      `;
+      card.onclick = () => openSheet(ev);
+      eventList.appendChild(card);
+    }
+  }
+
+  function openSheet(ev = null) {
+    sheetTitle.textContent = ev ? "予定を編集" : "予定を追加";
+
+    eventId.value = ev?.id || "";
+    dateInput.value = ev?.date || selectedDate;
+    startInput.value = ev?.startTime || "";
+    endInput.value = ev?.endTime || "";
+    placeInput.value = ev?.place || "";
+    titleInput.value = ev?.title || "";
+    assigneeInput.value = ev?.assignee || "";
+    peopleInput.value = ev?.people || "";
+    statusInput.value = ev?.status || "normal";
+    noteInput.value = ev?.note || "";
+
+    document.getElementById("deleteBtn").style.visibility = ev ? "visible" : "hidden";
+    sheetBackdrop.classList.add("show");
+  }
+
+  function closeSheet() {
+    sheetBackdrop.classList.remove("show");
+  }
+
+  function saveEvent() {
+    const id = eventId.value || makeId();
+
+    const ev = {
+      id,
+      date: dateInput.value,
+      startTime: startInput.value,
+      endTime: endInput.value,
+      place: placeInput.value.trim(),
+      title: titleInput.value.trim(),
+      assignee: assigneeInput.value.trim(),
+      people: peopleInput.value,
+      status: statusInput.value,
+      note: noteInput.value.trim()
+    };
+
+    if (!ev.date) {
+      alert("日付を入力してください。");
+      return;
+    }
+
+    const index = events.findIndex(e => e.id === id);
+    if (index >= 0) {
+      events[index] = ev;
+    } else {
+      events.push(ev);
+    }
+
+    selectedDate = ev.date;
+    current = new Date(ev.date + "T00:00:00");
+    saveEvents();
+    closeSheet();
+    render();
+  }
+
+  function deleteEvent() {
+    const id = eventId.value;
+    if (!id) return;
+
+    if (!confirm("この予定を削除しますか？")) return;
+
+    events = events.filter(e => e.id !== id);
+    saveEvents();
+    closeSheet();
+    render();
+  }
+
+  function exportBackup() {
+    const data = {
+      app: "Schedule Board",
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      events
+    };
+
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `schedule_backup_${toDateString(new Date())}.json`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
+  async function importBackup(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    try {
+      const text = await file.text();
+      const data = JSON.parse(text);
+      const importedEvents = Array.isArray(data) ? data : data.events;
+
+      if (!Array.isArray(importedEvents)) {
+        throw new Error("events が見つかりません");
+      }
+
+      if (!confirm("現在の予定をバックアップ内容で置き換えますか？")) return;
+
+      events = importedEvents;
+      saveEvents();
+      render();
+      alert("復元しました。");
+    } catch (err) {
+      alert("復元に失敗しました。JSONファイルを確認してください。");
+    } finally {
+      e.target.value = "";
+    }
+  }
+
+  function loadEvents() {
+    try {
+      return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+    } catch {
+      return [];
+    }
+  }
+
+  function saveEvents() {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(events));
+  }
+
+  function toDateString(date) {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, "0");
+    const d = String(date.getDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+  }
+
+  function formatDateLabel(dateStr) {
+    const date = new Date(dateStr + "T00:00:00");
+    const week = ["日","月","火","水","木","金","土"][date.getDay()];
+    return `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日（${week}）`;
+  }
+
+  function escapeHtml(str) {
+    return String(str).replace(/[&<>"']/g, s => ({
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#039;"
+    }[s]));
+  }
+
+  function makeId() {
+    if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+    return "evt_" + Date.now() + "_" + Math.random().toString(16).slice(2);
+  }
+
+  function scrollActiveDateIntoView() {
+    const active = document.querySelector(".date-btn.active");
+    if (active) active.scrollIntoView({ inline: "center", block: "nearest", behavior: "smooth" });
+  }
+
+  render();
+  setTimeout(scrollActiveDateIntoView, 100);
+</script>
+
+</body>
+</html>
