@@ -16,11 +16,10 @@
       --danger: #ff6b6b;
       --yellow: #ffd166;
       --green: #7bd88f;
+      --event-red: #ff5b5b;
     }
 
-    * {
-      box-sizing: border-box;
-    }
+    * { box-sizing: border-box; }
 
     body {
       margin: 0;
@@ -58,9 +57,7 @@
       -webkit-tap-highlight-color: transparent;
     }
 
-    button:active {
-      transform: scale(0.98);
-    }
+    button:active { transform: scale(0.98); }
 
     .date-strip {
       display: flex;
@@ -70,11 +67,10 @@
       scrollbar-width: none;
     }
 
-    .date-strip::-webkit-scrollbar {
-      display: none;
-    }
+    .date-strip::-webkit-scrollbar { display: none; }
 
     .date-btn {
+      position: relative;
       min-width: 56px;
       padding: 8px 6px;
       border-radius: 14px;
@@ -84,10 +80,21 @@
       color: var(--muted);
     }
 
+    /* 予定が入っている日は赤枠 */
+    .date-btn.has-events {
+      border: 2px solid var(--event-red);
+      box-shadow: 0 0 0 1px rgba(255, 91, 91, 0.15);
+    }
+
     .date-btn.active {
       background: var(--accent);
       color: #06101f;
       border-color: var(--accent);
+    }
+
+    .date-btn.active.has-events {
+      border: 2px solid var(--event-red);
+      box-shadow: inset 0 0 0 2px rgba(6, 16, 31, 0.35), 0 0 0 1px rgba(255, 91, 91, 0.5);
     }
 
     .date-btn .day {
@@ -95,9 +102,7 @@
       font-weight: 800;
     }
 
-    .date-btn .week {
-      font-size: 12px;
-    }
+    .date-btn .week { font-size: 12px; }
 
     main {
       padding: 12px;
@@ -136,18 +141,12 @@
       margin-bottom: 10px;
     }
 
-    .event-card.warn {
-      border-left-color: var(--yellow);
-    }
-
+    .event-card.warn { border-left-color: var(--yellow); }
     .event-card.done {
       border-left-color: var(--green);
       opacity: 0.75;
     }
-
-    .event-card.danger {
-      border-left-color: var(--danger);
-    }
+    .event-card.danger { border-left-color: var(--danger); }
 
     .event-time {
       font-size: 13px;
@@ -190,9 +189,7 @@
       z-index: 20;
     }
 
-    .sheet-backdrop.show {
-      display: block;
-    }
+    .sheet-backdrop.show { display: block; }
 
     .sheet {
       position: absolute;
@@ -238,6 +235,19 @@
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 8px;
+    }
+
+    .select-add-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 8px;
+      align-items: end;
+    }
+
+    .add-small {
+      white-space: nowrap;
+      height: 46px;
+      padding: 0 12px;
     }
 
     .actions {
@@ -295,7 +305,7 @@
 
 <main>
   <div class="toolbar">
-    <input class="search" id="searchInput" placeholder="物件名・担当・内容で検索">
+    <input class="search" id="searchInput" placeholder="物件名・会社名・利用者・内容で検索">
     <button id="todayBtn">今日</button>
   </div>
 
@@ -331,20 +341,29 @@
       </div>
     </div>
 
-    <label>場所・物件名</label>
-    <input id="placeInput" placeholder="例：LAKE Terrace 3-R1">
+    <label>場所・物件</label>
+    <div class="select-add-row">
+      <select id="placeInput"></select>
+      <button class="add-small" id="addPlaceBtn" type="button">追加</button>
+    </div>
 
     <label>内容</label>
     <input id="titleInput" placeholder="例：清掃 / チェックイン / 点検">
 
+    <label>会社名</label>
+    <div class="select-add-row">
+      <select id="companyInput"></select>
+      <button class="add-small" id="addCompanyBtn" type="button">追加</button>
+    </div>
+
     <div class="form-row">
       <div>
-        <label>担当</label>
-        <input id="assigneeInput" placeholder="AirBnB">
+        <label>利用者</label>
+        <input id="userInput" placeholder="例：山田様">
       </div>
       <div>
         <label>人数</label>
-        <input id="peopleInput" type="number" min="0" placeholder="2">
+        <select id="peopleInput"></select>
       </div>
     </div>
 
@@ -367,11 +386,31 @@
 </div>
 
 <script>
-  const STORAGE_KEY = "mobile_schedule_events_v1";
+  const STORAGE_KEY = "mobile_schedule_events_v2";
+  const SETTINGS_KEY = "mobile_schedule_settings_v1";
+
+  const DEFAULT_COMPANIES = ["AirBnB", "オーナー"];
+
+  const DEFAULT_PLACES = [
+    "レイクテラスA-111",
+    "満天のくつろぎ 蔵々サウナ",
+    "ロッジWOODY",
+    "LAKE Terrace 590",
+    "イーナドウ",
+    "TAKASHIMA BEST SO",
+    "湖畔-Koomu-",
+    "園井亭 びわ湖の家",
+    "知恵藤",
+    "ファフライケ",
+    "楽紀Co",
+    "常峰",
+    "LAKE Terrace 4-661"
+  ];
 
   let current = new Date();
   let selectedDate = toDateString(new Date());
   let events = loadEvents();
+  let settings = loadSettings();
 
   const dateStrip = document.getElementById("dateStrip");
   const monthLabel = document.getElementById("monthLabel");
@@ -388,7 +427,8 @@
   const endInput = document.getElementById("endInput");
   const placeInput = document.getElementById("placeInput");
   const titleInput = document.getElementById("titleInput");
-  const assigneeInput = document.getElementById("assigneeInput");
+  const companyInput = document.getElementById("companyInput");
+  const userInput = document.getElementById("userInput");
   const peopleInput = document.getElementById("peopleInput");
   const statusInput = document.getElementById("statusInput");
   const noteInput = document.getElementById("noteInput");
@@ -413,6 +453,20 @@
   };
 
   document.getElementById("addBtn").onclick = () => openSheet();
+
+  document.getElementById("addCompanyBtn").onclick = () => {
+    const name = prompt("会社名を追加");
+    if (!name || !name.trim()) return;
+    addOption("companies", name.trim());
+    renderCompanyOptions(name.trim());
+  };
+
+  document.getElementById("addPlaceBtn").onclick = () => {
+    const name = prompt("場所・物件を追加");
+    if (!name || !name.trim()) return;
+    addOption("places", name.trim());
+    renderPlaceOptions(name.trim());
+  };
 
   sheetBackdrop.addEventListener("click", e => {
     if (e.target === sheetBackdrop) closeSheet();
@@ -444,7 +498,11 @@
       const dateStr = toDateString(date);
       const count = events.filter(e => e.date === dateStr).length;
       const btn = document.createElement("button");
-      btn.className = "date-btn" + (dateStr === selectedDate ? " active" : "");
+      btn.className =
+        "date-btn" +
+        (dateStr === selectedDate ? " active" : "") +
+        (count > 0 ? " has-events" : "");
+
       btn.innerHTML = `
         <div class="day">${d}</div>
         <div class="week">${["日","月","火","水","木","金","土"][date.getDay()]}${count ? "・" + count : ""}</div>
@@ -464,7 +522,7 @@
       .filter(e => e.date === selectedDate)
       .filter(e => {
         if (!keyword) return true;
-        const text = [e.title, e.place, e.assignee, e.note].join(" ").toLowerCase();
+        const text = [e.title, e.place, e.company, e.assignee, e.user, e.note].join(" ").toLowerCase();
         return text.includes(keyword);
       })
       .sort((a, b) => (a.startTime || "").localeCompare(b.startTime || ""));
@@ -478,6 +536,7 @@
     }
 
     for (const ev of dayEvents) {
+      const company = ev.company || ev.assignee || "-";
       const card = document.createElement("div");
       card.className = `event-card ${ev.status || "normal"}`;
       card.innerHTML = `
@@ -485,7 +544,7 @@
         <div class="event-title">${escapeHtml(ev.title || "無題")}</div>
         <div class="event-meta">
           ${escapeHtml(ev.place || "")}<br>
-          担当：${escapeHtml(ev.assignee || "-")} / 人数：${ev.people || "-"}<br>
+          会社：${escapeHtml(company)} / 利用者：${escapeHtml(ev.user || "-")} / 人数：${ev.people || "-"}<br>
           ${ev.note ? "メモ：" + escapeHtml(ev.note) : ""}
         </div>
       `;
@@ -497,13 +556,18 @@
   function openSheet(ev = null) {
     sheetTitle.textContent = ev ? "予定を編集" : "予定を追加";
 
+    renderPlaceOptions(ev?.place || "");
+    renderCompanyOptions(ev?.company || ev?.assignee || "");
+    renderPeopleOptions(ev?.people || "");
+
     eventId.value = ev?.id || "";
     dateInput.value = ev?.date || selectedDate;
     startInput.value = ev?.startTime || "";
     endInput.value = ev?.endTime || "";
     placeInput.value = ev?.place || "";
     titleInput.value = ev?.title || "";
-    assigneeInput.value = ev?.assignee || "";
+    companyInput.value = ev?.company || ev?.assignee || "";
+    userInput.value = ev?.user || "";
     peopleInput.value = ev?.people || "";
     statusInput.value = ev?.status || "normal";
     noteInput.value = ev?.note || "";
@@ -524,9 +588,10 @@
       date: dateInput.value,
       startTime: startInput.value,
       endTime: endInput.value,
-      place: placeInput.value.trim(),
+      place: placeInput.value,
       title: titleInput.value.trim(),
-      assignee: assigneeInput.value.trim(),
+      company: companyInput.value,
+      user: userInput.value.trim(),
       people: peopleInput.value,
       status: statusInput.value,
       note: noteInput.value.trim()
@@ -563,11 +628,54 @@
     render();
   }
 
+  function renderPlaceOptions(selectedValue = "") {
+    const values = unique([...DEFAULT_PLACES, ...settings.places, selectedValue].filter(Boolean));
+    placeInput.innerHTML = `<option value="">選択してください</option>` + values.map(v => `<option value="${escapeAttr(v)}">${escapeHtml(v)}</option>`).join("");
+  }
+
+  function renderCompanyOptions(selectedValue = "") {
+    const values = unique([...DEFAULT_COMPANIES, ...settings.companies, selectedValue].filter(Boolean));
+    companyInput.innerHTML = `<option value="">選択してください</option>` + values.map(v => `<option value="${escapeAttr(v)}">${escapeHtml(v)}</option>`).join("");
+  }
+
+  function renderPeopleOptions(selectedValue = "") {
+    let html = `<option value="">未入力</option>`;
+    for (let i = 1; i <= 20; i++) {
+      html += `<option value="${i}">${i}名</option>`;
+    }
+    peopleInput.innerHTML = html;
+    peopleInput.value = selectedValue || "";
+  }
+
+  function addOption(type, value) {
+    if (!settings[type].includes(value)) {
+      settings[type].push(value);
+      saveSettings();
+    }
+  }
+
+  function loadSettings() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(SETTINGS_KEY)) || {};
+      return {
+        companies: Array.isArray(saved.companies) ? saved.companies : [],
+        places: Array.isArray(saved.places) ? saved.places : []
+      };
+    } catch {
+      return { companies: [], places: [] };
+    }
+  }
+
+  function saveSettings() {
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+  }
+
   function exportBackup() {
     const data = {
       app: "Schedule Board",
-      version: 1,
+      version: 2,
       exportedAt: new Date().toISOString(),
+      settings,
       events
     };
 
@@ -595,6 +703,15 @@
       if (!confirm("現在の予定をバックアップ内容で置き換えますか？")) return;
 
       events = importedEvents;
+
+      if (data.settings) {
+        settings = {
+          companies: Array.isArray(data.settings.companies) ? data.settings.companies : settings.companies,
+          places: Array.isArray(data.settings.places) ? data.settings.places : settings.places
+        };
+        saveSettings();
+      }
+
       saveEvents();
       render();
       alert("復元しました。");
@@ -607,7 +724,19 @@
 
   function loadEvents() {
     try {
-      return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+      const oldV2 = JSON.parse(localStorage.getItem(STORAGE_KEY));
+      if (Array.isArray(oldV2)) return oldV2;
+
+      const oldV1 = JSON.parse(localStorage.getItem("mobile_schedule_events_v1"));
+      if (Array.isArray(oldV1)) {
+        return oldV1.map(e => ({
+          ...e,
+          company: e.company || e.assignee || "",
+          user: e.user || ""
+        }));
+      }
+
+      return [];
     } catch {
       return [];
     }
@@ -638,6 +767,14 @@
       '"': "&quot;",
       "'": "&#039;"
     }[s]));
+  }
+
+  function escapeAttr(str) {
+    return escapeHtml(str).replace(/`/g, "&#096;");
+  }
+
+  function unique(arr) {
+    return [...new Set(arr.map(v => String(v).trim()).filter(Boolean))];
   }
 
   function makeId() {
