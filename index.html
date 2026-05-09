@@ -512,8 +512,8 @@
 </div>
 
 <script>
-  const STORAGE_KEY = "mobile_schedule_events_v11";
-  const SETTINGS_KEY = "mobile_schedule_settings_v11";
+  const STORAGE_KEY = "mobile_schedule_events_v12";
+  const SETTINGS_KEY = "mobile_schedule_settings_v12";
 
   const DEFAULT_COMPANIES = ["AirBnB", "オーナー"];
   const DEFAULT_CONTENTS = ["チェックイン", "清掃"];
@@ -903,8 +903,7 @@
       key: keyNumberInput.value || ""
     };
 
-    const newNameRaw = prompt("場所・物件を編集
-※空にしてOKを押すと削除", current.name);
+    const newNameRaw = prompt("場所・物件を編集\n※空にしてOKを押すと削除", current.name);
     if (newNameRaw === null) return;
 
     const newName = newNameRaw.trim();
@@ -1130,7 +1129,7 @@
   function exportBackup() {
     const data = {
       app: "Schedule Board",
-      version: 11,
+      version: 12,
       exportedAt: new Date().toISOString(),
       settings,
       events
