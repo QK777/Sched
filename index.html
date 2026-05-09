@@ -276,37 +276,66 @@
     .time-row {
       display: grid;
       grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-      gap: 8px;
+      gap: 6px;
       width: 100%;
+      align-items: center;
     }
 
     .time-row > div {
       min-width: 0;
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      gap: 5px;
+      align-items: center;
+    }
+
+    .time-row label {
+      margin: 0;
+      font-size: 12px;
+      white-space: nowrap;
     }
 
     .time-row input[type="time"] {
       width: 100%;
       max-width: 100%;
       min-width: 0;
-      height: 46px;
-      line-height: 1.2;
-      font-size: 16px;
-      padding: 10px 8px;
-      letter-spacing: -0.02em;
-      -webkit-appearance: menulist;
-      appearance: auto;
+      height: 38px;
+      line-height: 1;
+      font-size: 14px;
+      padding: 6px 4px;
+      letter-spacing: -0.06em;
+      -webkit-appearance: none;
+      appearance: none;
     }
 
     .time-row input[type="time"]::-webkit-calendar-picker-indicator {
-      margin-left: 0;
-      padding-left: 0;
-      padding-right: 0;
+      margin-left: -6px;
+      padding: 0;
+      width: 14px;
+      height: 14px;
     }
 
     .date-input {
       font-size: 16px;
       padding-left: 10px;
       padding-right: 10px;
+      height: 42px;
+    }
+
+    @media (max-width: 340px) {
+      .time-row {
+        gap: 4px;
+      }
+
+      .time-row label {
+        font-size: 11px;
+      }
+
+      .time-row input[type="time"] {
+        font-size: 13px;
+        padding-left: 3px;
+        padding-right: 2px;
+      }
     }
 
     .form-row {
@@ -1095,14 +1124,11 @@
   }
 
   function loadSettings() {
-    const defaults = {
-      companies: DEFAULT_COMPANIES.slice(),
-      contents: DEFAULT_CONTENTS.slice(),
-      placeItems: DEFAULT_PLACE_ITEMS.slice()
-    };
-
     const settingKeys = [
       SETTINGS_KEY,
+      "mobile_schedule_settings_v16",
+      "mobile_schedule_settings_v15",
+      "mobile_schedule_settings_v14",
       "mobile_schedule_settings_v13",
       "mobile_schedule_settings_v12",
       "mobile_schedule_settings_v11",
@@ -1118,41 +1144,49 @@
       "mobile_schedule_settings_v1"
     ];
 
+    let merged = {
+      companies: DEFAULT_COMPANIES.slice(),
+      contents: DEFAULT_CONTENTS.slice(),
+      placeItems: DEFAULT_PLACE_ITEMS.slice()
+    };
+
     for (const key of settingKeys) {
       try {
         const saved = JSON.parse(localStorage.getItem(key));
         if (!saved) continue;
 
-        if (Array.isArray(saved.placeItems)) {
-          return {
-            companies: Array.isArray(saved.companies) ? saved.companies : DEFAULT_COMPANIES.slice(),
-            contents: Array.isArray(saved.contents) ? saved.contents : DEFAULT_CONTENTS.slice(),
-            placeItems: uniqueObjectsByName(saved.placeItems)
-          };
+        if (Array.isArray(saved.companies)) {
+          merged.companies = unique([...merged.companies, ...saved.companies]);
         }
 
-        const oldPlaces = Array.isArray(saved.places) ? saved.places : [];
-        const oldPlaceItems = oldPlaces.map(name => ({ name, sub: "", address: "", key: "" }));
+        if (Array.isArray(saved.contents)) {
+          merged.contents = unique([...merged.contents, ...saved.contents]);
+        }
 
-        return {
-          companies: unique([...DEFAULT_COMPANIES, ...(Array.isArray(saved.companies) ? saved.companies : [])]),
-          contents: unique([...DEFAULT_CONTENTS, ...(Array.isArray(saved.contents) ? saved.contents : [])]),
-          placeItems: uniqueObjectsByName([...DEFAULT_PLACE_ITEMS, ...oldPlaceItems])
-        };
+        if (Array.isArray(saved.placeItems)) {
+          merged.placeItems = uniqueObjectsByName([...merged.placeItems, ...saved.placeItems]);
+        } else if (Array.isArray(saved.places)) {
+          const oldPlaceItems = saved.places.map(name => ({ name, sub: "", address: "", key: "" }));
+          merged.placeItems = uniqueObjectsByName([...merged.placeItems, ...oldPlaceItems]);
+        }
       } catch {}
     }
 
-    return defaults;
+    return merged;
   }
 
   function saveSettings() {
-    localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+    try {
+      localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+    } catch {
+      alert("設定を保存できませんでした。Safari/ChromeでGitHub PagesのURLから開いてください。");
+    }
   }
 
   function exportBackup() {
     const data = {
       app: "Schedule Board",
-      version: 15,
+      version: 17,
       exportedAt: new Date().toISOString(),
       settings,
       events
@@ -1204,6 +1238,9 @@
   function loadEvents() {
     const keys = [
       STORAGE_KEY,
+      "mobile_schedule_events_v16",
+      "mobile_schedule_events_v15",
+      "mobile_schedule_events_v14",
       "mobile_schedule_events_v13",
       "mobile_schedule_events_v12",
       "mobile_schedule_events_v11",
@@ -1219,14 +1256,27 @@
       "mobile_schedule_events_v1"
     ];
 
+    let emptyCandidate = null;
+
     for (const key of keys) {
       try {
-        const data = JSON.parse(localStorage.getItem(key));
-        if (Array.isArray(data)) return data.map(normalizeEvent);
+        const raw = localStorage.getItem(key);
+        if (!raw) continue;
+
+        const data = JSON.parse(raw);
+        if (!Array.isArray(data)) continue;
+
+        if (data.length > 0) {
+          return data.map(normalizeEvent);
+        }
+
+        if (emptyCandidate === null) {
+          emptyCandidate = data;
+        }
       } catch {}
     }
 
-    return [];
+    return Array.isArray(emptyCandidate) ? emptyCandidate : [];
   }
 
   function normalizeEvent(e) {
@@ -1244,7 +1294,11 @@
   }
 
   function saveEvents() {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(events));
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(events));
+    } catch {
+      alert("予定を保存できませんでした。Safari/ChromeでGitHub PagesのURLから開いてください。");
+    }
   }
 
   function formatUserName(name) {
