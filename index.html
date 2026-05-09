@@ -507,8 +507,8 @@
 </div>
 
 <script>
-  const STORAGE_KEY = "mobile_schedule_events_v13";
-  const SETTINGS_KEY = "mobile_schedule_settings_v13";
+  const STORAGE_KEY = "mobile_schedule_events";
+  const SETTINGS_KEY = "mobile_schedule_settings";
 
   const DEFAULT_COMPANIES = ["AirBnB", "オーナー"];
   const DEFAULT_CONTENTS = ["チェックイン", "清掃"];
@@ -1092,29 +1092,48 @@
       placeItems: DEFAULT_PLACE_ITEMS.slice()
     };
 
-    try {
-      const saved = JSON.parse(localStorage.getItem(SETTINGS_KEY)) || {};
-      if (Array.isArray(saved.placeItems)) {
+    const settingKeys = [
+      SETTINGS_KEY,
+      "mobile_schedule_settings_v13",
+      "mobile_schedule_settings_v12",
+      "mobile_schedule_settings_v11",
+      "mobile_schedule_settings_v10",
+      "mobile_schedule_settings_v9",
+      "mobile_schedule_settings_v8",
+      "mobile_schedule_settings_v7",
+      "mobile_schedule_settings_v6",
+      "mobile_schedule_settings_v5",
+      "mobile_schedule_settings_v4",
+      "mobile_schedule_settings_v3",
+      "mobile_schedule_settings_v2",
+      "mobile_schedule_settings_v1"
+    ];
+
+    for (const key of settingKeys) {
+      try {
+        const saved = JSON.parse(localStorage.getItem(key));
+        if (!saved) continue;
+
+        if (Array.isArray(saved.placeItems)) {
+          return {
+            companies: Array.isArray(saved.companies) ? saved.companies : DEFAULT_COMPANIES.slice(),
+            contents: Array.isArray(saved.contents) ? saved.contents : DEFAULT_CONTENTS.slice(),
+            placeItems: uniqueObjectsByName(saved.placeItems)
+          };
+        }
+
+        const oldPlaces = Array.isArray(saved.places) ? saved.places : [];
+        const oldPlaceItems = oldPlaces.map(name => ({ name, sub: "", address: "", key: "" }));
+
         return {
-          companies: Array.isArray(saved.companies) ? saved.companies : DEFAULT_COMPANIES.slice(),
-          contents: Array.isArray(saved.contents) ? saved.contents : DEFAULT_CONTENTS.slice(),
-          placeItems: uniqueObjectsByName(saved.placeItems)
+          companies: unique([...DEFAULT_COMPANIES, ...(Array.isArray(saved.companies) ? saved.companies : [])]),
+          contents: unique([...DEFAULT_CONTENTS, ...(Array.isArray(saved.contents) ? saved.contents : [])]),
+          placeItems: uniqueObjectsByName([...DEFAULT_PLACE_ITEMS, ...oldPlaceItems])
         };
-      }
-
-      const oldV2 = JSON.parse(localStorage.getItem("mobile_schedule_settings_v2")) || {};
-      const oldV1 = JSON.parse(localStorage.getItem("mobile_schedule_settings_v1")) || {};
-      const oldPlaces = Array.isArray(oldV2.places) ? oldV2.places : (Array.isArray(oldV1.places) ? oldV1.places : []);
-      const oldPlaceItems = oldPlaces.map(name => ({ name, sub: "", address: "" }));
-
-      return {
-        companies: unique([...DEFAULT_COMPANIES, ...(Array.isArray(oldV2.companies) ? oldV2.companies : (Array.isArray(oldV1.companies) ? oldV1.companies : []))]),
-        contents: unique([...DEFAULT_CONTENTS, ...(Array.isArray(oldV2.contents) ? oldV2.contents : [])]),
-        placeItems: uniqueObjectsByName([...DEFAULT_PLACE_ITEMS, ...oldPlaceItems])
-      };
-    } catch {
-      return defaults;
+      } catch {}
     }
+
+    return defaults;
   }
 
   function saveSettings() {
@@ -1124,7 +1143,7 @@
   function exportBackup() {
     const data = {
       app: "Schedule Board",
-      version: 13,
+      version: 14,
       exportedAt: new Date().toISOString(),
       settings,
       events
@@ -1176,6 +1195,15 @@
   function loadEvents() {
     const keys = [
       STORAGE_KEY,
+      "mobile_schedule_events_v13",
+      "mobile_schedule_events_v12",
+      "mobile_schedule_events_v11",
+      "mobile_schedule_events_v10",
+      "mobile_schedule_events_v9",
+      "mobile_schedule_events_v8",
+      "mobile_schedule_events_v7",
+      "mobile_schedule_events_v6",
+      "mobile_schedule_events_v5",
       "mobile_schedule_events_v4",
       "mobile_schedule_events_v3",
       "mobile_schedule_events_v2",
@@ -1304,11 +1332,17 @@
     return "evt_" + Date.now() + "_" + Math.random().toString(16).slice(2);
   }
 
+  function migrateLocalStorageToStableKeys() {
+    saveEvents();
+    saveSettings();
+  }
+
   function scrollActiveDateIntoView() {
     const active = document.querySelector(".date-btn.active");
     if (active) active.scrollIntoView({ inline: "center", block: "nearest", behavior: "smooth" });
   }
 
+  migrateLocalStorageToStableKeys();
   render();
   setTimeout(scrollActiveDateIntoView, 100);
 </script>
