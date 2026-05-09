@@ -60,14 +60,25 @@
       display: flex;
       gap: 8px;
       overflow-x: auto;
+      overflow-y: hidden;
       padding-bottom: 4px;
       scrollbar-width: none;
+      cursor: grab;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-overflow-scrolling: touch;
+      touch-action: pan-x;
+    }
+
+    .date-strip.dragging {
+      cursor: grabbing;
     }
 
     .date-strip::-webkit-scrollbar { display: none; }
 
     .date-btn {
       position: relative;
+      flex: 0 0 56px;
       min-width: 56px;
       padding: 8px 6px;
       border-radius: 14px;
@@ -565,21 +576,13 @@
     "#4dd4ac"
   ];
 
-  // 写真の左1〜13を「場所・建物名・住所番号」の3要素として初期登録。
-  // 読み取りが怪しい箇所は後から画面上で追加・削除・調整できる前提。
   const DEFAULT_PLACE_ITEMS = [
     { name: "レイクウエスト 4-711", sub: "ウエストヒルズ邸", address: "1049-3", key: "" },
     { name: "湖辺のくつろぎ、時々サウナ (4-656)", sub: "由井邸", address: "1039-7", key: "" },
-//  { name: "ログハウスWOODY (1-2-91)", sub: "松本邸", address: "5-283", key: "" },
     { name: "LAKE Terrace 6-904", sub: "早坂邸", address: "1432-179", key: "" },
-//  { name: "LAKE Terrace 3-R1", sub: "ダイトウ邸", address: "2-299", key: "" },
     { name: "TAKASHIMA BEST SO (4-625/626)", sub: "加藤邸", address: "1039-90", key: "" },
-//  { name: "湖恵夢～Koemu～(3-O-1)", sub: "分林邸", address: "1022-13", key: "" },
     { name: "風車村 びわ湖の家 1011 (4-657)", sub: "伊藤邸", address: "1039-96", key: "" },
-//  { name: "知風邸 (3-R11)", sub: "久保邸", address: "2-307", key: "" },
-//  { name: "アクアヴィラ (3-449/450)", sub: "安江邸", address: "5-152/153", key: "" },
     { name: "湖Co (12-20)", sub: "高橋邸", address: "1431-29", key: "" },
-//  { name: "常楽園 (3-E10)", sub: "南口邸", address: "4-65", key: "" },
     { name: "LAKE Terrace 4-661", sub: "堂阪邸", address: "1039-74", key: "" }
   ];
 
@@ -588,6 +591,10 @@
   let selectedColor = CARD_COLORS[0];
   let settings = loadSettings();
   let events = loadEvents();
+
+  let renderedStartMonth = null;
+  let renderedEndMonth = null;
+  let isExtendingDateStrip = false;
 
   const dateStrip = document.getElementById("dateStrip");
   const monthLabel = document.getElementById("monthLabel");
@@ -616,18 +623,21 @@
   document.getElementById("prevMonth").onclick = () => {
     current.setMonth(current.getMonth() - 1);
     selectedDate = toDateString(new Date(current.getFullYear(), current.getMonth(), 1));
+    resetDateWindowAroundCurrent();
     render();
   };
 
   document.getElementById("nextMonth").onclick = () => {
     current.setMonth(current.getMonth() + 1);
     selectedDate = toDateString(new Date(current.getFullYear(), current.getMonth(), 1));
+    resetDateWindowAroundCurrent();
     render();
   };
 
   document.getElementById("todayBtn").onclick = () => {
     current = new Date();
     selectedDate = toDateString(new Date());
+    resetDateWindowAroundCurrent();
     render();
     scrollActiveDateIntoView();
   };
@@ -663,34 +673,25 @@
     renderEvents();
   }
 
-  function renderDates() {
-    const year = current.getFullYear();
-    const month = current.getMonth();
-    const lastDay = new Date(year, month + 1, 0).getDate();
+  function renderDates(keepScroll = false) {
+    const previousScrollLeft = dateStrip.scrollLeft;
 
-    monthLabel.textContent = `${year}年${month + 1}月`;
-    dateStrip.innerHTML = "";
-
-    for (let d = 1; d <= lastDay; d++) {
-      const date = new Date(year, month, d);
-      const dateStr = toDateString(date);
-      const count = events.filter(e => e.date === dateStr).length;
-      const btn = document.createElement("button");
-      btn.className =
-        "date-btn" +
-        (dateStr === selectedDate ? " active" : "") +
-        (count > 0 ? " has-events" : "");
-
-      btn.innerHTML = `
-        <div class="day">${d}</div>
-        <div class="week">${["日","月","火","水","木","金","土"][date.getDay()]}${count ? "・" + count : ""}</div>
-      `;
-      btn.onclick = () => {
-        selectedDate = dateStr;
-        render();
-      };
-      dateStrip.appendChild(btn);
+    // 初回は「前月・当月・翌月」の3か月分を描画。
+    // 端に近づいたら setupDateStripDragScroll 側で3か月ずつ追加する。
+    if (!renderedStartMonth || !renderedEndMonth) {
+      renderedStartMonth = monthStart(addMonths(current, -1));
+      renderedEndMonth = monthStart(addMonths(current, 1));
     }
+
+    rebuildDateStrip();
+
+    if (keepScroll) {
+      dateStrip.scrollLeft = previousScrollLeft;
+    } else {
+      scrollCurrentMonthStartIntoView();
+    }
+
+    updateMonthLabelByStripCenter();
   }
 
   function renderEvents() {
@@ -830,6 +831,7 @@
 
     selectedDate = ev.date;
     current = new Date(ev.date + "T00:00:00");
+    resetDateWindowAroundCurrent();
     saveEvents();
     closeSheet();
     render();
@@ -965,7 +967,6 @@
     settings.placeItems.push(edited);
     saveSettings();
 
-    // 保存済み予定も同じ場所名のものは新しい設定へ寄せる
     events = events.map(ev => {
       if (ev.place !== oldName) return ev;
       return {
@@ -987,13 +988,11 @@
   }
 
   function deletePlaceItemByName(name) {
-    if (!confirm(`「${name}」を場所リストから削除しますか？
-建物名・番号・鍵番号の紐づく設定も削除されます。`)) return;
+    if (!confirm(`「${name}」を場所リストから削除しますか？\n建物名・番号・鍵番号の紐づく設定も削除されます。`)) return;
 
     settings.placeItems = settings.placeItems.filter(item => item.name !== name);
     saveSettings();
 
-    // 保存済み予定は消さず、設定由来の補助情報だけ空にする
     events = events.map(ev => {
       if (ev.place !== name) return ev;
       return {
@@ -1076,7 +1075,6 @@
     settings[type] = unique(settings[type].map(v => v === oldValue ? newValue : v));
     saveSettings();
 
-    // 保存済み予定も同じ値のものは新しい名前へ寄せる
     if (type === "companies") {
       events = events.map(ev => ev.company === oldValue ? { ...ev, company: newValue } : ev);
       companyInput.value = newValue;
@@ -1099,7 +1097,6 @@
     settings[type] = settings[type].filter(v => v !== value);
     saveSettings();
 
-    // 保存済み予定は消さず、該当欄だけ空にする
     if (type === "companies") {
       events = events.map(ev => ev.company === value ? { ...ev, company: "" } : ev);
     }
@@ -1128,7 +1125,6 @@
   }
 
   function loadSettings() {
-    // まず現在の固定キーから読む。更新後もここを最優先にする。
     try {
       const saved = JSON.parse(localStorage.getItem(SETTINGS_KEY));
       if (saved?.companies && saved?.placeItems) {
@@ -1140,7 +1136,6 @@
       }
     } catch {}
 
-    // 初回のみデフォルト値を使う
     return {
       companies: DEFAULT_COMPANIES.slice(),
       contents: DEFAULT_CONTENTS.slice(),
@@ -1159,7 +1154,7 @@
   function exportBackup() {
     const data = {
       app: "Schedule Board",
-      version: 21,
+      version: 27,
       exportedAt: new Date().toISOString(),
       settings,
       events
@@ -1257,7 +1252,6 @@
     const raw = String(value || "").trim();
     if (!raw) return "";
 
-    // 930 -> 09:30 / 9:30 -> 09:30 / 09：30 -> 09:30
     const normalized = raw.replace("：", ":");
 
     const compact = normalized.match(/^(\d{1,2})(\d{2})$/);
@@ -1341,9 +1335,6 @@
       alert("この開き方では保存が残らない可能性があります。GitHub PagesなどのURLからSafari/Chromeで開いてください。");
       return;
     }
-
-    // 起動時にデフォルト値を自動保存しない。
-    // 保存は、予定追加・編集・強制保存・設定変更時だけ行う。
   }
 
   function isLocalStorageAvailable() {
@@ -1357,11 +1348,289 @@
     }
   }
 
-  function scrollActiveDateIntoView() {
-    const active = document.querySelector(".date-btn.active");
-    if (active) active.scrollIntoView({ inline: "center", block: "nearest", behavior: "smooth" });
+  function monthStart(date) {
+    return new Date(date.getFullYear(), date.getMonth(), 1);
   }
 
+  function addMonths(date, amount) {
+    return new Date(date.getFullYear(), date.getMonth() + amount, 1);
+  }
+
+  function resetDateWindowAroundCurrent() {
+    renderedStartMonth = monthStart(addMonths(current, -1));
+    renderedEndMonth = monthStart(addMonths(current, 1));
+  }
+
+  function rebuildDateStrip() {
+    dateStrip.innerHTML = "";
+
+    const startDate = new Date(renderedStartMonth);
+    const endDate = new Date(renderedEndMonth.getFullYear(), renderedEndMonth.getMonth() + 1, 0);
+
+    for (let date = new Date(startDate); date <= endDate; date.setDate(date.getDate() + 1)) {
+      dateStrip.appendChild(createDateButton(new Date(date)));
+    }
+  }
+
+  function createDateButton(dateObj) {
+    const dateStr = toDateString(dateObj);
+    const count = events.filter(e => e.date === dateStr).length;
+
+    const btn = document.createElement("button");
+    btn.className =
+      "date-btn" +
+      (dateStr === selectedDate ? " active" : "") +
+      (count > 0 ? " has-events" : "");
+    btn.dataset.date = dateStr;
+
+    btn.innerHTML = `
+      <div class="day">${dateObj.getDate()}</div>
+      <div class="week">${["日","月","火","水","木","金","土"][dateObj.getDay()]}${count ? "・" + count : ""}</div>
+    `;
+
+    return btn;
+  }
+
+  function appendDateMonths(count = 3) {
+    if (isExtendingDateStrip) return;
+    isExtendingDateStrip = true;
+
+    const start = addMonths(renderedEndMonth, 1);
+    const end = addMonths(renderedEndMonth, count);
+    const lastDay = new Date(end.getFullYear(), end.getMonth() + 1, 0);
+
+    const frag = document.createDocumentFragment();
+    for (let date = new Date(start); date <= lastDay; date.setDate(date.getDate() + 1)) {
+      frag.appendChild(createDateButton(new Date(date)));
+    }
+
+    dateStrip.appendChild(frag);
+    renderedEndMonth = monthStart(end);
+    isExtendingDateStrip = false;
+  }
+
+  function prependDateMonths(count = 3) {
+    if (isExtendingDateStrip) return;
+    isExtendingDateStrip = true;
+
+    const oldScrollWidth = dateStrip.scrollWidth;
+
+    const start = addMonths(renderedStartMonth, -count);
+    const end = addMonths(renderedStartMonth, -1);
+    const lastDay = new Date(end.getFullYear(), end.getMonth() + 1, 0);
+
+    const frag = document.createDocumentFragment();
+    for (let date = new Date(start); date <= lastDay; date.setDate(date.getDate() + 1)) {
+      frag.appendChild(createDateButton(new Date(date)));
+    }
+
+    dateStrip.prepend(frag);
+    renderedStartMonth = monthStart(start);
+
+    const addedWidth = dateStrip.scrollWidth - oldScrollWidth;
+    dateStrip.scrollLeft += addedWidth;
+
+    isExtendingDateStrip = false;
+  }
+
+  function ensureDateStripBuffer() {
+    const maxScroll = dateStrip.scrollWidth - dateStrip.clientWidth;
+    const threshold = 900;
+
+    if (dateStrip.scrollLeft > maxScroll - threshold) {
+      appendDateMonths(3);
+    }
+
+    if (dateStrip.scrollLeft < threshold) {
+      prependDateMonths(3);
+    }
+  }
+
+  function updateMonthLabelByStripCenter() {
+    const centerX = dateStrip.scrollLeft + dateStrip.clientWidth / 2;
+    const firstDayButtons = [...dateStrip.querySelectorAll(".date-btn")]
+      .filter(btn => btn.dataset.date && btn.dataset.date.endsWith("-01"));
+
+    let candidate = null;
+
+    for (const btn of firstDayButtons) {
+      const btnCenter = btn.offsetLeft + btn.offsetWidth / 2;
+      if (btnCenter <= centerX) {
+        candidate = btn;
+      } else {
+        break;
+      }
+    }
+
+    if (!candidate && firstDayButtons.length) {
+      candidate = firstDayButtons[0];
+    }
+
+    if (!candidate) return;
+
+    const date = new Date(candidate.dataset.date + "T00:00:00");
+    current = date;
+    monthLabel.textContent = `${date.getFullYear()}年${date.getMonth() + 1}月`;
+  }
+
+  function selectDateWithoutRebuildingStrip(dateStr) {
+    selectedDate = dateStr;
+    current = new Date(dateStr + "T00:00:00");
+    monthLabel.textContent = `${current.getFullYear()}年${current.getMonth() + 1}月`;
+    updateDateActiveStates();
+    renderEvents();
+  }
+
+  function updateDateActiveStates() {
+    const buttons = dateStrip.querySelectorAll(".date-btn");
+    buttons.forEach(btn => {
+      btn.classList.toggle("active", btn.dataset.date === selectedDate);
+    });
+  }
+
+  function scrollCurrentMonthStartIntoView() {
+    const y = current.getFullYear();
+    const m = String(current.getMonth() + 1).padStart(2, "0");
+    const first = dateStrip.querySelector(`[data-date="${y}-${m}-01"]`);
+    if (first) {
+      dateStrip.scrollLeft = Math.max(0, first.offsetLeft - dateStrip.offsetLeft);
+    }
+  }
+
+  // ── 日付ストリップのドラッグスクロール（慣性 + 月またぎ）──────────
+  function setupDateStripDragScroll() {
+    let isDown = false;
+    let startX = 0;
+    let startScrollLeft = 0;
+    let moved = false;
+    let activePointerId = null;
+
+    // 慣性用
+    let lastX = 0;
+    let lastT = 0;
+    let velocity = 0;  // px/ms
+    let rafId = null;
+
+    function cancelMomentum() {
+      if (rafId !== null) { cancelAnimationFrame(rafId); rafId = null; }
+    }
+
+    // 端に近づいたら3か月ずつ追加描画する
+    function checkEdgeOverflow() {
+      ensureDateStripBuffer();
+      updateMonthLabelByStripCenter();
+    }
+
+    function startMomentum(v) {
+      cancelMomentum();
+      velocity = v;
+
+      function step() {
+        if (Math.abs(velocity) < 0.04) { velocity = 0; return; }
+        dateStrip.scrollLeft += velocity * 16;
+        velocity *= 0.88;  // 摩擦係数
+        checkEdgeOverflow();
+        rafId = requestAnimationFrame(step);
+      }
+      rafId = requestAnimationFrame(step);
+    }
+
+    let downDateStr = null; // pointerdown時の日付文字列を記憶
+
+    dateStrip.addEventListener("pointerdown", (e) => {
+      cancelMomentum();
+      isDown = true;
+      moved = false;
+      startX = lastX = e.clientX;
+      lastT = e.timeStamp;
+      startScrollLeft = dateStrip.scrollLeft;
+      activePointerId = e.pointerId;
+      velocity = 0;
+      // setPointerCapture するとpointerup時にe.targetがdateStrip自身になるため
+      // 押した瞬間の日付文字列をここで記憶しておく
+      const btn = e.target.closest(".date-btn");
+      downDateStr = btn ? btn.dataset.date : null;
+      dateStrip.classList.add("dragging");
+      try { dateStrip.setPointerCapture(e.pointerId); } catch {}
+    });
+
+    dateStrip.addEventListener("pointermove", (e) => {
+      if (!isDown || e.pointerId !== activePointerId) return;
+
+      const dx = e.clientX - startX;
+      if (Math.abs(dx) > 6) moved = true;
+
+      if (moved) {
+        // 速度計算（直近フレームの変位）
+        const dt = e.timeStamp - lastT || 1;
+        velocity = -(e.clientX - lastX) / dt;
+        lastX = e.clientX;
+        lastT = e.timeStamp;
+
+        dateStrip.scrollLeft = startScrollLeft - dx;
+        ensureDateStripBuffer();
+        updateMonthLabelByStripCenter();
+      }
+    });
+
+    dateStrip.addEventListener("pointerup", (e) => {
+      if (!isDown || e.pointerId !== activePointerId) return;
+
+      const wasMoved = moved;
+      isDown = false;
+      moved = false;
+      activePointerId = null;
+      dateStrip.classList.remove("dragging");
+      try { dateStrip.releasePointerCapture(e.pointerId); } catch {}
+
+      if (!wasMoved) {
+        if (downDateStr) {
+          selectDateWithoutRebuildingStrip(downDateStr);
+        }
+      } else {
+        // 指を離したら慣性スクロール開始
+        startMomentum(velocity);
+      }
+      downDateStr = null;
+    });
+
+    dateStrip.addEventListener("pointercancel", () => {
+      isDown = false;
+      moved = false;
+      activePointerId = null;
+      dateStrip.classList.remove("dragging");
+      cancelMomentum();
+    });
+
+    dateStrip.addEventListener("scroll", () => {
+      ensureDateStripBuffer();
+      updateMonthLabelByStripCenter();
+    }, { passive: true });
+
+    // トラックパッド・ホイールでも横スクロール（月またぎつき）
+    dateStrip.addEventListener("wheel", (e) => {
+      if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+        cancelMomentum();
+        dateStrip.scrollLeft += e.deltaY;
+        velocity = e.deltaY / 16;
+        ensureDateStripBuffer();
+        updateMonthLabelByStripCenter();
+        e.preventDefault();
+      }
+    }, { passive: false });
+  }
+
+  function scrollActiveDateIntoView() {
+    const active = document.querySelector(".date-btn.active");
+    if (!active) return;
+
+    const target = active.offsetLeft - dateStrip.offsetLeft - (dateStrip.clientWidth / 2) + (active.clientWidth / 2);
+    dateStrip.scrollLeft = Math.max(0, target);
+    ensureDateStripBuffer();
+    updateMonthLabelByStripCenter();
+  }
+
+  setupDateStripDragScroll();
   migrateLocalStorageToStableKeys();
   render();
   setTimeout(scrollActiveDateIntoView, 100);
