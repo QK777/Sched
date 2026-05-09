@@ -273,6 +273,10 @@
       resize: vertical;
     }
 
+    .time-after-date {
+      margin-top: 12px;
+    }
+
     .time-row {
       display: grid;
       grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
@@ -459,10 +463,6 @@
     <button id="exportBtn">バックアップ</button>
     <button id="importBtn">復元</button>
   </div>
-  <div class="backup-row">
-    <button id="debugStorageBtn">保存状態確認</button>
-    <button id="forceSaveBtn">強制保存</button>
-  </div>
   <input id="importFile" type="file" accept="application/json" hidden>
 
   <div class="section-title" id="selectedDateLabel"></div>
@@ -483,7 +483,7 @@
     <label>日付</label>
     <input type="date" id="dateInput" class="date-input">
 
-    <div class="time-row">
+    <div class="time-row time-after-date">
       <div>
         <label>開始</label>
         <input type="time" id="startInput">
@@ -657,12 +657,6 @@
   document.getElementById("exportBtn").onclick = exportBackup;
   document.getElementById("importBtn").onclick = () => document.getElementById("importFile").click();
   document.getElementById("importFile").onchange = importBackup;
-  document.getElementById("debugStorageBtn").onclick = debugStorage;
-  document.getElementById("forceSaveBtn").onclick = () => {
-    saveEvents();
-    saveSettings();
-    alert("強制保存しました。保存状態確認で件数を確認してください。");
-  };
 
   function render() {
     renderDates();
@@ -1165,7 +1159,7 @@
   function exportBackup() {
     const data = {
       app: "Schedule Board",
-      version: 20,
+      version: 21,
       exportedAt: new Date().toISOString(),
       settings,
       events
@@ -1222,40 +1216,6 @@
         if (Array.isArray(data)) return data;
       }
     } catch {}
-
-    // 固定キーがまだ無い場合だけ、旧バージョンの保存データを探す
-    const keys = [
-      "mobile_schedule_events_v18",
-      "mobile_schedule_events_v17",
-      "mobile_schedule_events_v16",
-      "mobile_schedule_events_v15",
-      "mobile_schedule_events_v14",
-      "mobile_schedule_events_v13",
-      "mobile_schedule_events_v12",
-      "mobile_schedule_events_v11",
-      "mobile_schedule_events_v10",
-      "mobile_schedule_events_v9",
-      "mobile_schedule_events_v8",
-      "mobile_schedule_events_v7",
-      "mobile_schedule_events_v6",
-      "mobile_schedule_events_v5",
-      "mobile_schedule_events_v4",
-      "mobile_schedule_events_v3",
-      "mobile_schedule_events_v2",
-      "mobile_schedule_events_v1"
-    ];
-
-    for (const key of keys) {
-      try {
-        const raw = localStorage.getItem(key);
-        if (!raw) continue;
-
-        const data = JSON.parse(raw);
-        if (Array.isArray(data) && data.length > 0) {
-          return data;
-        }
-      } catch {}
-    }
 
     return [];
   }
@@ -1374,99 +1334,6 @@
   function makeId() {
     if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
     return "evt_" + Date.now() + "_" + Math.random().toString(16).slice(2);
-  }
-
-  function debugStorage() {
-    const eventKeys = [
-      STORAGE_KEY,
-      "mobile_schedule_events_v19",
-      "mobile_schedule_events_v18",
-      "mobile_schedule_events_v17",
-      "mobile_schedule_events_v16",
-      "mobile_schedule_events_v15",
-      "mobile_schedule_events_v14",
-      "mobile_schedule_events_v13",
-      "mobile_schedule_events_v12",
-      "mobile_schedule_events_v11",
-      "mobile_schedule_events_v10",
-      "mobile_schedule_events_v9",
-      "mobile_schedule_events_v8",
-      "mobile_schedule_events_v7",
-      "mobile_schedule_events_v6",
-      "mobile_schedule_events_v5",
-      "mobile_schedule_events_v4",
-      "mobile_schedule_events_v3",
-      "mobile_schedule_events_v2",
-      "mobile_schedule_events_v1"
-    ];
-
-    const settingKeys = [
-      SETTINGS_KEY,
-      "mobile_schedule_settings_v19",
-      "mobile_schedule_settings_v18",
-      "mobile_schedule_settings_v17",
-      "mobile_schedule_settings_v16",
-      "mobile_schedule_settings_v15",
-      "mobile_schedule_settings_v14",
-      "mobile_schedule_settings_v13",
-      "mobile_schedule_settings_v12",
-      "mobile_schedule_settings_v11",
-      "mobile_schedule_settings_v10",
-      "mobile_schedule_settings_v9",
-      "mobile_schedule_settings_v8",
-      "mobile_schedule_settings_v7",
-      "mobile_schedule_settings_v6",
-      "mobile_schedule_settings_v5",
-      "mobile_schedule_settings_v4",
-      "mobile_schedule_settings_v3",
-      "mobile_schedule_settings_v2",
-      "mobile_schedule_settings_v1"
-    ];
-
-    let testResult = "OK";
-    try {
-      localStorage.setItem("__schedule_debug_test__", new Date().toISOString());
-      const readBack = localStorage.getItem("__schedule_debug_test__");
-      if (!readBack) testResult = "書き込み後の読み取り失敗";
-      localStorage.removeItem("__schedule_debug_test__");
-    } catch (err) {
-      testResult = "NG: " + err.name + " " + err.message;
-    }
-
-    const countArrayKey = (key) => {
-      try {
-        const raw = localStorage.getItem(key);
-        if (!raw) return "なし";
-        const data = JSON.parse(raw);
-        if (Array.isArray(data)) return `${data.length}件 / ${raw.length}文字`;
-        if (data && typeof data === "object") {
-          const parts = [];
-          if (Array.isArray(data.placeItems)) parts.push(`場所${data.placeItems.length}`);
-          if (Array.isArray(data.companies)) parts.push(`会社${data.companies.length}`);
-          if (Array.isArray(data.contents)) parts.push(`内容${data.contents.length}`);
-          return `${parts.join("・") || "object"} / ${raw.length}文字`;
-        }
-        return `${typeof data} / ${raw.length}文字`;
-      } catch (err) {
-        return "読取エラー";
-      }
-    };
-
-    const eventLines = eventKeys.map(k => `${k}: ${countArrayKey(k)}`).join("\n");
-    const settingLines = settingKeys.map(k => `${k}: ${countArrayKey(k)}`).join("\n");
-
-    const text =
-      `URL: ${location.href}\n` +
-      `origin: ${location.origin}\n` +
-      `protocol: ${location.protocol}\n` +
-      `localStorageテスト: ${testResult}\n` +
-      `現在の画面上の予定数: ${events.length}\n` +
-      `現在の場所設定数: ${settings.placeItems.length}\n\n` +
-      `【予定キー】\n${eventLines}\n\n` +
-      `【設定キー】\n${settingLines}`;
-
-    console.log(text);
-    alert(text);
   }
 
   function migrateLocalStorageToStableKeys() {
