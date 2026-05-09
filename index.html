@@ -885,8 +885,7 @@
       key: keyNumberInput.value || ""
     };
 
-    const newNameRaw = prompt("場所・物件を編集
-※空にしてOKを押すと削除", current.name);
+    const newNameRaw = prompt("場所・物件を編集※空にしてOKを押すと削除", current.name);
     if (newNameRaw === null) return;
 
     const newName = newNameRaw.trim();
