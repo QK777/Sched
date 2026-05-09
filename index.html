@@ -586,8 +586,8 @@
   let current = new Date();
   let selectedDate = toDateString(new Date());
   let selectedColor = CARD_COLORS[0];
-  let events = loadEvents();
   let settings = loadSettings();
+  let events = loadEvents();
 
   const dateStrip = document.getElementById("dateStrip");
   const monthLabel = document.getElementById("monthLabel");
@@ -1165,7 +1165,7 @@
   function exportBackup() {
     const data = {
       app: "Schedule Board",
-      version: 19,
+      version: 20,
       exportedAt: new Date().toISOString(),
       settings,
       events
@@ -1219,7 +1219,7 @@
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw !== null) {
         const data = JSON.parse(raw);
-        if (Array.isArray(data)) return data.map(normalizeEvent);
+        if (Array.isArray(data)) return data;
       }
     } catch {}
 
@@ -1252,7 +1252,7 @@
 
         const data = JSON.parse(raw);
         if (Array.isArray(data) && data.length > 0) {
-          return data.map(normalizeEvent);
+          return data;
         }
       } catch {}
     }
@@ -1379,6 +1379,8 @@
   function debugStorage() {
     const eventKeys = [
       STORAGE_KEY,
+      "mobile_schedule_events_v19",
+      "mobile_schedule_events_v18",
       "mobile_schedule_events_v17",
       "mobile_schedule_events_v16",
       "mobile_schedule_events_v15",
@@ -1400,6 +1402,8 @@
 
     const settingKeys = [
       SETTINGS_KEY,
+      "mobile_schedule_settings_v19",
+      "mobile_schedule_settings_v18",
       "mobile_schedule_settings_v17",
       "mobile_schedule_settings_v16",
       "mobile_schedule_settings_v15",
