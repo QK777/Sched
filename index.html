@@ -13,9 +13,6 @@
       --muted: #9ca3af;
       --border: #2d3340;
       --accent: #6aa6ff;
-      --danger: #ff6b6b;
-      --yellow: #ffd166;
-      --green: #7bd88f;
       --event-red: #ff5b5b;
     }
 
@@ -80,7 +77,6 @@
       color: var(--muted);
     }
 
-    /* 予定が入っている日は赤枠 */
     .date-btn.has-events {
       border: 2px solid var(--event-red);
       box-shadow: 0 0 0 1px rgba(255, 91, 91, 0.15);
@@ -135,18 +131,11 @@
     .event-card {
       background: var(--panel);
       border: 1px solid var(--border);
-      border-left: 6px solid var(--accent);
+      border-left: 7px solid var(--card-color, #6aa6ff);
       border-radius: 16px;
       padding: 12px;
       margin-bottom: 10px;
     }
-
-    .event-card.warn { border-left-color: var(--yellow); }
-    .event-card.done {
-      border-left-color: var(--green);
-      opacity: 0.75;
-    }
-    .event-card.danger { border-left-color: var(--danger); }
 
     .event-time {
       font-size: 13px;
@@ -155,15 +144,56 @@
     }
 
     .event-title {
-      font-size: 17px;
-      font-weight: 800;
-      margin-bottom: 6px;
+      font-size: 18px;
+      font-weight: 850;
+      margin-bottom: 8px;
+      line-height: 1.35;
+    }
+
+    .place-line {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px 8px;
+      align-items: center;
+    }
+
+    .place-main { color: var(--text); }
+
+    .place-sub,
+    .place-address {
+      color: #d1d5db;
+      font-size: 14px;
+      font-weight: 650;
+    }
+
+    .place-address {
+      padding: 1px 7px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: rgba(255,255,255,0.04);
+    }
+
+    .key-line {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: #f3f4f6;
+      font-size: 14px;
+      font-weight: 700;
+      margin-top: 2px;
+      margin-bottom: 2px;
+    }
+
+    .key-label {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 650;
     }
 
     .event-meta {
       font-size: 13px;
       color: var(--muted);
-      line-height: 1.6;
+      line-height: 1.65;
       overflow-wrap: anywhere;
     }
 
@@ -224,6 +254,7 @@
       border-radius: 12px;
       padding: 11px;
       font-size: 16px;
+      min-width: 0;
     }
 
     textarea {
@@ -231,9 +262,22 @@
       resize: vertical;
     }
 
+    .time-row {
+      display: grid;
+      grid-template-columns: minmax(0, 0.92fr) minmax(0, 0.92fr);
+      gap: 6px;
+      max-width: 96%;
+    }
+
     .form-row {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 0.75fr);
+      gap: 8px;
+    }
+
+    .place-detail-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 0.8fr);
       gap: 8px;
     }
 
@@ -278,6 +322,39 @@
       grid-template-columns: 1fr 1fr;
       gap: 8px;
       margin-top: 10px;
+    }
+
+    .palette {
+      display: flex;
+      gap: 10px;
+      padding: 6px 0 2px;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+
+    .palette::-webkit-scrollbar { display: none; }
+
+    .color-dot {
+      width: 34px;
+      height: 34px;
+      min-width: 34px;
+      border-radius: 999px;
+      border: 3px solid transparent;
+      padding: 0;
+      background: var(--dot);
+      box-shadow: 0 0 0 1px rgba(255,255,255,0.18);
+    }
+
+    .color-dot.selected {
+      border-color: #fff;
+      box-shadow: 0 0 0 3px rgba(255,255,255,0.15);
+    }
+
+    .hint {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.5;
+      margin-top: 6px;
     }
 
     @media (min-width: 720px) {
@@ -327,10 +404,13 @@
 
     <input type="hidden" id="eventId">
 
+    <label>カード枠の色</label>
+    <div class="palette" id="colorPalette"></div>
+
     <label>日付</label>
     <input type="date" id="dateInput">
 
-    <div class="form-row">
+    <div class="time-row">
       <div>
         <label>開始</label>
         <input type="time" id="startInput">
@@ -346,9 +426,21 @@
       <select id="placeInput"></select>
       <button class="add-small" id="addPlaceBtn" type="button">追加</button>
     </div>
+    <div class="place-detail-row">
+      <div>
+        <label>建物名・屋号など</label>
+        <input id="placeSubInput" placeholder="例：ウエストヒルズ邸">
+      </div>
+      <div>
+        <label>住所・番号など</label>
+        <input id="placeAddressInput" placeholder="例：1049-3">
+      </div>
+    </div>
 
-    <label>内容</label>
-    <input id="titleInput" placeholder="例：清掃 / チェックイン / 点検">
+    <label>鍵番号</label>
+    <input id="keyNumberInput" placeholder="例：1234 / キーボックスA">
+
+    <div class="hint">場所を選ぶと登録済みの建物名・番号・鍵番号が自動入力されます。追加ボタンは通常タップで新規追加、長押しで選択中の項目を編集できます。編集時に最初の項目名を空にすると削除します。</div>
 
     <label>会社名</label>
     <div class="select-add-row">
@@ -359,7 +451,7 @@
     <div class="form-row">
       <div>
         <label>利用者</label>
-        <input id="userInput" placeholder="例：山田様">
+        <input id="userInput" placeholder="例：山田">
       </div>
       <div>
         <label>人数</label>
@@ -367,13 +459,11 @@
       </div>
     </div>
 
-    <label>状態</label>
-    <select id="statusInput">
-      <option value="normal">通常</option>
-      <option value="warn">注意</option>
-      <option value="danger">緊急</option>
-      <option value="done">完了</option>
-    </select>
+    <label>内容</label>
+    <div class="select-add-row">
+      <select id="contentInput"></select>
+      <button class="add-small" id="addContentBtn" type="button">追加</button>
+    </div>
 
     <label>メモ</label>
     <textarea id="noteInput" placeholder="備考を入力"></textarea>
@@ -386,29 +476,43 @@
 </div>
 
 <script>
-  const STORAGE_KEY = "mobile_schedule_events_v2";
-  const SETTINGS_KEY = "mobile_schedule_settings_v1";
+  const STORAGE_KEY = "mobile_schedule_events_v7";
+  const SETTINGS_KEY = "mobile_schedule_settings_v7";
 
   const DEFAULT_COMPANIES = ["AirBnB", "オーナー"];
+  const DEFAULT_CONTENTS = ["チェックイン", "清掃"];
 
-  const DEFAULT_PLACES = [
-    "レイクテラスA-111",
-    "満天のくつろぎ 蔵々サウナ",
-    "ロッジWOODY",
-    "LAKE Terrace 590",
-    "イーナドウ",
-    "TAKASHIMA BEST SO",
-    "湖畔-Koomu-",
-    "園井亭 びわ湖の家",
-    "知恵藤",
-    "ファフライケ",
-    "楽紀Co",
-    "常峰",
-    "LAKE Terrace 4-661"
+  const CARD_COLORS = [
+    "#6aa6ff",
+    "#ff5b5b",
+    "#ffd166",
+    "#7bd88f",
+    "#c084fc",
+    "#ff9f43",
+    "#4dd4ac"
+  ];
+
+  // 写真の左1〜13を「場所・建物名・住所番号」の3要素として初期登録。
+  // 読み取りが怪しい箇所は後から画面上で追加・削除・調整できる前提。
+  const DEFAULT_PLACE_ITEMS = [
+    { name: "レイクウエスト 4-711", sub: "ウエストヒルズ邸", address: "1049-3", key: "" },
+    { name: "湖辺のくつろぎ、時々サウナ (4-656)", sub: "由井邸", address: "1039-7", key: "" },
+//  { name: "ログハウスWOODY (1-2-91)", sub: "松本邸", address: "5-283", key: "" },
+    { name: "LAKE Terrace 6-904", sub: "早坂邸", address: "1432-179", key: "" },
+//  { name: "LAKE Terrace 3-R1", sub: "ダイトウ邸", address: "2-299", key: "" },
+    { name: "TAKASHIMA BEST SO (4-625/626)", sub: "加藤邸", address: "1039-90", key: "" },
+//  { name: "湖恵夢～Koemu～(3-O-1)", sub: "分林邸", address: "1022-13", key: "" },
+    { name: "風車村 びわ湖の家 1011 (4-657)", sub: "伊藤邸", address: "1039-96", key: "" },
+//  { name: "知風邸 (3-R11)", sub: "久保邸", address: "2-307", key: "" },
+//  { name: "アクアヴィラ (3-449/450)", sub: "安江邸", address: "5-152/153", key: "" },
+    { name: "湖Co (12-20)", sub: "高橋邸", address: "1431-29", key: "" },
+//  { name: "常楽園 (3-E10)", sub: "南口邸", address: "4-65", key: "" },
+    { name: "LAKE Terrace 4-661", sub: "堂阪邸", address: "1039-74", key: "" }
   ];
 
   let current = new Date();
   let selectedDate = toDateString(new Date());
+  let selectedColor = CARD_COLORS[0];
   let events = loadEvents();
   let settings = loadSettings();
 
@@ -422,15 +526,18 @@
   const sheetTitle = document.getElementById("sheetTitle");
 
   const eventId = document.getElementById("eventId");
+  const colorPalette = document.getElementById("colorPalette");
   const dateInput = document.getElementById("dateInput");
   const startInput = document.getElementById("startInput");
   const endInput = document.getElementById("endInput");
   const placeInput = document.getElementById("placeInput");
-  const titleInput = document.getElementById("titleInput");
+  const placeSubInput = document.getElementById("placeSubInput");
+  const placeAddressInput = document.getElementById("placeAddressInput");
+  const keyNumberInput = document.getElementById("keyNumberInput");
   const companyInput = document.getElementById("companyInput");
   const userInput = document.getElementById("userInput");
   const peopleInput = document.getElementById("peopleInput");
-  const statusInput = document.getElementById("statusInput");
+  const contentInput = document.getElementById("contentInput");
   const noteInput = document.getElementById("noteInput");
 
   document.getElementById("prevMonth").onclick = () => {
@@ -454,19 +561,17 @@
 
   document.getElementById("addBtn").onclick = () => openSheet();
 
-  document.getElementById("addCompanyBtn").onclick = () => {
-    const name = prompt("会社名を追加");
-    if (!name || !name.trim()) return;
-    addOption("companies", name.trim());
-    renderCompanyOptions(name.trim());
-  };
+  placeInput.addEventListener("change", () => {
+    const item = getPlaceItem(placeInput.value);
+    if (!item) return;
+    placeSubInput.value = item.sub || "";
+    placeAddressInput.value = item.address || "";
+    keyNumberInput.value = item.key || "";
+  });
 
-  document.getElementById("addPlaceBtn").onclick = () => {
-    const name = prompt("場所・物件を追加");
-    if (!name || !name.trim()) return;
-    addOption("places", name.trim());
-    renderPlaceOptions(name.trim());
-  };
+  setupAddDeleteButton("addCompanyBtn", "companies", "会社名を追加", companyInput, renderCompanyOptions);
+  setupAddDeleteButton("addContentBtn", "contents", "内容を追加", contentInput, renderContentOptions);
+  setupPlaceAddDeleteButton();
 
   sheetBackdrop.addEventListener("click", e => {
     if (e.target === sheetBackdrop) closeSheet();
@@ -522,7 +627,10 @@
       .filter(e => e.date === selectedDate)
       .filter(e => {
         if (!keyword) return true;
-        const text = [e.title, e.place, e.company, e.assignee, e.user, e.note].join(" ").toLowerCase();
+        const text = [
+          e.content, e.title, e.place, e.placeSub, e.placeAddress, e.keyNumber,
+          e.company, e.assignee, e.user, e.note
+        ].join(" ").toLowerCase();
         return text.includes(keyword);
       })
       .sort((a, b) => (a.startTime || "").localeCompare(b.startTime || ""));
@@ -537,14 +645,27 @@
 
     for (const ev of dayEvents) {
       const company = ev.company || ev.assignee || "-";
+      const content = ev.content || ev.title || "-";
       const card = document.createElement("div");
-      card.className = `event-card ${ev.status || "normal"}`;
+      card.className = "event-card";
+      card.style.setProperty("--card-color", ev.color || CARD_COLORS[0]);
+      const timeLine = (ev.startTime || ev.endTime)
+        ? `<div class="event-time">${ev.startTime || ""}${ev.startTime && ev.endTime ? " - " : ""}${ev.endTime || ""}</div>`
+        : "";
+
       card.innerHTML = `
-        <div class="event-time">${ev.startTime || "--:--"} - ${ev.endTime || "--:--"}</div>
-        <div class="event-title">${escapeHtml(ev.title || "無題")}</div>
+        <div class="event-title">
+          <div class="place-line">
+            <span class="place-main">${escapeHtml(ev.place || "場所未設定")}</span>
+            ${ev.placeSub ? `<span class="place-sub">${escapeHtml(ev.placeSub)}</span>` : ""}
+            ${ev.placeAddress ? `<span class="place-address">${escapeHtml(ev.placeAddress)}</span>` : ""}
+          </div>
+        </div>
+        ${ev.keyNumber ? `<div class="key-line"><span class="key-label">鍵</span>${escapeHtml(ev.keyNumber)}</div>` : ""}
+        ${timeLine}
         <div class="event-meta">
-          ${escapeHtml(ev.place || "")}<br>
-          会社：${escapeHtml(company)} / 利用者：${escapeHtml(ev.user || "-")} / 人数：${ev.people || "-"}<br>
+          内容：${escapeHtml(content)}<br>
+          会社：${escapeHtml(company)} / 利用者：${escapeHtml(formatUserName(ev.user) || "-")}${ev.people ? " / " + ev.people + "名" : ""}<br>
           ${ev.note ? "メモ：" + escapeHtml(ev.note) : ""}
         </div>
       `;
@@ -556,8 +677,12 @@
   function openSheet(ev = null) {
     sheetTitle.textContent = ev ? "予定を編集" : "予定を追加";
 
+    selectedColor = ev?.color || CARD_COLORS[0];
+    renderColorPalette();
+
     renderPlaceOptions(ev?.place || "");
     renderCompanyOptions(ev?.company || ev?.assignee || "");
+    renderContentOptions(ev?.content || ev?.title || "");
     renderPeopleOptions(ev?.people || "");
 
     eventId.value = ev?.id || "";
@@ -565,15 +690,36 @@
     startInput.value = ev?.startTime || "";
     endInput.value = ev?.endTime || "";
     placeInput.value = ev?.place || "";
-    titleInput.value = ev?.title || "";
+
+    const placeItem = getPlaceItem(placeInput.value) || {};
+    placeSubInput.value = ev?.placeSub || placeItem.sub || "";
+    placeAddressInput.value = ev?.placeAddress || placeItem.address || "";
+    keyNumberInput.value = ev?.keyNumber || placeItem.key || "";
+
     companyInput.value = ev?.company || ev?.assignee || "";
-    userInput.value = ev?.user || "";
+    userInput.value = removeSama(ev?.user || "");
     peopleInput.value = ev?.people || "";
-    statusInput.value = ev?.status || "normal";
+    contentInput.value = ev?.content || ev?.title || "";
     noteInput.value = ev?.note || "";
 
     document.getElementById("deleteBtn").style.visibility = ev ? "visible" : "hidden";
     sheetBackdrop.classList.add("show");
+  }
+
+  function renderColorPalette() {
+    colorPalette.innerHTML = "";
+    for (const color of CARD_COLORS) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "color-dot" + (color === selectedColor ? " selected" : "");
+      btn.style.setProperty("--dot", color);
+      btn.setAttribute("aria-label", color);
+      btn.onclick = () => {
+        selectedColor = color;
+        renderColorPalette();
+      };
+      colorPalette.appendChild(btn);
+    }
   }
 
   function closeSheet() {
@@ -589,11 +735,14 @@
       startTime: startInput.value,
       endTime: endInput.value,
       place: placeInput.value,
-      title: titleInput.value.trim(),
+      placeSub: placeSubInput.value.trim(),
+      placeAddress: placeAddressInput.value.trim(),
+      keyNumber: keyNumberInput.value.trim(),
       company: companyInput.value,
-      user: userInput.value.trim(),
+      user: formatUserName(userInput.value.trim()),
       people: peopleInput.value,
-      status: statusInput.value,
+      content: contentInput.value,
+      color: selectedColor,
       note: noteInput.value.trim()
     };
 
@@ -603,11 +752,8 @@
     }
 
     const index = events.findIndex(e => e.id === id);
-    if (index >= 0) {
-      events[index] = ev;
-    } else {
-      events.push(ev);
-    }
+    if (index >= 0) events[index] = ev;
+    else events.push(ev);
 
     selectedDate = ev.date;
     current = new Date(ev.date + "T00:00:00");
@@ -628,23 +774,278 @@
     render();
   }
 
+  function getPlaceItems() {
+    return settings.placeItems;
+  }
+
+  function getPlaceItem(name) {
+    return getPlaceItems().find(item => item.name === name);
+  }
+
   function renderPlaceOptions(selectedValue = "") {
-    const values = unique([...DEFAULT_PLACES, ...settings.places, selectedValue].filter(Boolean));
-    placeInput.innerHTML = `<option value="">選択してください</option>` + values.map(v => `<option value="${escapeAttr(v)}">${escapeHtml(v)}</option>`).join("");
+    const values = uniqueObjectsByName([...getPlaceItems(), { name: selectedValue, sub: "", address: "" }].filter(x => x.name));
+    placeInput.innerHTML =
+      `<option value="">選択してください</option>` +
+      values.map(v => {
+        const label = [v.name, v.sub, v.address, v.key ? "鍵:" + v.key : ""].filter(Boolean).join("　");
+        return `<option value="${escapeAttr(v.name)}">${escapeHtml(label)}</option>`;
+      }).join("");
   }
 
   function renderCompanyOptions(selectedValue = "") {
-    const values = unique([...DEFAULT_COMPANIES, ...settings.companies, selectedValue].filter(Boolean));
+    const values = unique([...settings.companies, selectedValue].filter(Boolean));
     companyInput.innerHTML = `<option value="">選択してください</option>` + values.map(v => `<option value="${escapeAttr(v)}">${escapeHtml(v)}</option>`).join("");
+  }
+
+  function renderContentOptions(selectedValue = "") {
+    const values = unique([...settings.contents, selectedValue].filter(Boolean));
+    contentInput.innerHTML = `<option value="">選択してください</option>` + values.map(v => `<option value="${escapeAttr(v)}">${escapeHtml(v)}</option>`).join("");
   }
 
   function renderPeopleOptions(selectedValue = "") {
     let html = `<option value="">未入力</option>`;
-    for (let i = 1; i <= 20; i++) {
-      html += `<option value="${i}">${i}名</option>`;
-    }
+    for (let i = 1; i <= 20; i++) html += `<option value="${i}">${i}名</option>`;
     peopleInput.innerHTML = html;
     peopleInput.value = selectedValue || "";
+  }
+
+  function setupPlaceAddDeleteButton() {
+    const btn = document.getElementById("addPlaceBtn");
+    let timer = null;
+    let longPressed = false;
+
+    btn.addEventListener("click", () => {
+      if (longPressed) {
+        longPressed = false;
+        return;
+      }
+
+      const name = prompt("場所・物件を追加", "");
+      if (!name || !name.trim()) return;
+
+      const sub = prompt("建物名・屋号など", "") || "";
+      const address = prompt("住所・番号など", "") || "";
+      const key = prompt("鍵番号", "") || "";
+
+      upsertPlaceItem({
+        name: name.trim(),
+        sub: sub.trim(),
+        address: address.trim(),
+        key: key.trim()
+      });
+
+      renderPlaceOptions(name.trim());
+      placeInput.value = name.trim();
+      placeSubInput.value = sub.trim();
+      placeAddressInput.value = address.trim();
+      keyNumberInput.value = key.trim();
+    });
+
+    btn.addEventListener("pointerdown", () => {
+      longPressed = false;
+      timer = setTimeout(() => {
+        longPressed = true;
+        editSelectedPlaceItem();
+      }, 650);
+    });
+
+    btn.addEventListener("pointerup", () => clearTimeout(timer));
+    btn.addEventListener("pointercancel", () => clearTimeout(timer));
+    btn.addEventListener("pointerleave", () => clearTimeout(timer));
+  }
+
+  function editSelectedPlaceItem() {
+    const oldName = placeInput.value;
+    if (!oldName) {
+      alert("編集する場所を選択してください。");
+      return;
+    }
+
+    const current = getPlaceItem(oldName) || {
+      name: oldName,
+      sub: placeSubInput.value || "",
+      address: placeAddressInput.value || "",
+      key: keyNumberInput.value || ""
+    };
+
+    const newNameRaw = prompt("場所・物件を編集※空にしてOKを押すと削除", current.name);
+    if (newNameRaw === null) return;
+
+    const newName = newNameRaw.trim();
+
+    if (!newName) {
+      deletePlaceItemByName(oldName);
+      return;
+    }
+
+    const newSub = prompt("建物名・屋号など", current.sub || "") ?? current.sub ?? "";
+    const newAddress = prompt("住所・番号など", current.address || "") ?? current.address ?? "";
+    const newKey = prompt("鍵番号", current.key || "") ?? current.key ?? "";
+
+    const edited = {
+      name: newName,
+      sub: String(newSub).trim(),
+      address: String(newAddress).trim(),
+      key: String(newKey).trim()
+    };
+
+    settings.placeItems = settings.placeItems.filter(item => item.name !== oldName);
+    settings.placeItems.push(edited);
+    saveSettings();
+
+    // 保存済み予定も同じ場所名のものは新しい設定へ寄せる
+    events = events.map(ev => {
+      if (ev.place !== oldName) return ev;
+      return {
+        ...ev,
+        place: edited.name,
+        placeSub: edited.sub,
+        placeAddress: edited.address,
+        keyNumber: edited.key
+      };
+    });
+    saveEvents();
+
+    renderPlaceOptions(edited.name);
+    placeInput.value = edited.name;
+    placeSubInput.value = edited.sub;
+    placeAddressInput.value = edited.address;
+    keyNumberInput.value = edited.key;
+    render();
+  }
+
+  function deletePlaceItemByName(name) {
+    if (!confirm(`「${name}」を場所リストから削除しますか？
+建物名・番号・鍵番号の紐づく設定も削除されます。`)) return;
+
+    settings.placeItems = settings.placeItems.filter(item => item.name !== name);
+    saveSettings();
+
+    // 保存済み予定は消さず、設定由来の補助情報だけ空にする
+    events = events.map(ev => {
+      if (ev.place !== name) return ev;
+      return {
+        ...ev,
+        placeSub: "",
+        placeAddress: "",
+        keyNumber: ""
+      };
+    });
+    saveEvents();
+
+    placeInput.value = "";
+    placeSubInput.value = "";
+    placeAddressInput.value = "";
+    keyNumberInput.value = "";
+    renderPlaceOptions("");
+    render();
+  }
+
+  function upsertPlaceItem(item) {
+    const index = settings.placeItems.findIndex(x => x.name === item.name);
+    if (index >= 0) settings.placeItems[index] = item;
+    else settings.placeItems.push(item);
+    saveSettings();
+  }
+
+  function deleteSelectedPlaceItem() {
+    const value = placeInput.value;
+    if (!value) return;
+    deletePlaceItemByName(value);
+  }
+
+  function setupAddDeleteButton(buttonId, type, promptText, selectEl, renderFn) {
+    const btn = document.getElementById(buttonId);
+    let timer = null;
+    let longPressed = false;
+
+    btn.addEventListener("click", () => {
+      if (longPressed) {
+        longPressed = false;
+        return;
+      }
+      const name = prompt(promptText, "");
+      if (!name || !name.trim()) return;
+      addOption(type, name.trim());
+      renderFn(name.trim());
+      selectEl.value = name.trim();
+    });
+
+    btn.addEventListener("pointerdown", () => {
+      longPressed = false;
+      timer = setTimeout(() => {
+        longPressed = true;
+        editSelectedOption(type, selectEl, renderFn);
+      }, 650);
+    });
+
+    btn.addEventListener("pointerup", () => clearTimeout(timer));
+    btn.addEventListener("pointercancel", () => clearTimeout(timer));
+    btn.addEventListener("pointerleave", () => clearTimeout(timer));
+  }
+
+  function editSelectedOption(type, selectEl, renderFn) {
+    const oldValue = selectEl.value;
+    if (!oldValue) {
+      alert("編集する項目を選択してください。");
+      return;
+    }
+
+    const newValueRaw = prompt("項目を編集\n※空にしてOKを押すと削除", oldValue);
+    if (newValueRaw === null) return;
+
+    const newValue = newValueRaw.trim();
+
+    if (!newValue) {
+      deleteOptionByValue(type, oldValue, selectEl, renderFn);
+      return;
+    }
+
+    settings[type] = unique(settings[type].map(v => v === oldValue ? newValue : v));
+    saveSettings();
+
+    // 保存済み予定も同じ値のものは新しい名前へ寄せる
+    if (type === "companies") {
+      events = events.map(ev => ev.company === oldValue ? { ...ev, company: newValue } : ev);
+      companyInput.value = newValue;
+    }
+
+    if (type === "contents") {
+      events = events.map(ev => ev.content === oldValue ? { ...ev, content: newValue } : ev);
+      contentInput.value = newValue;
+    }
+
+    saveEvents();
+    renderFn(newValue);
+    selectEl.value = newValue;
+    render();
+  }
+
+  function deleteOptionByValue(type, value, selectEl, renderFn) {
+    if (!confirm(`「${value}」をリストから削除しますか？`)) return;
+
+    settings[type] = settings[type].filter(v => v !== value);
+    saveSettings();
+
+    // 保存済み予定は消さず、該当欄だけ空にする
+    if (type === "companies") {
+      events = events.map(ev => ev.company === value ? { ...ev, company: "" } : ev);
+    }
+
+    if (type === "contents") {
+      events = events.map(ev => ev.content === value ? { ...ev, content: "" } : ev);
+    }
+
+    saveEvents();
+    selectEl.value = "";
+    renderFn("");
+    render();
+  }
+
+  function deleteSelectedOption(type, selectEl, renderFn) {
+    const value = selectEl.value;
+    if (!value) return;
+    deleteOptionByValue(type, value, selectEl, renderFn);
   }
 
   function addOption(type, value) {
@@ -655,14 +1056,34 @@
   }
 
   function loadSettings() {
+    const defaults = {
+      companies: DEFAULT_COMPANIES.slice(),
+      contents: DEFAULT_CONTENTS.slice(),
+      placeItems: DEFAULT_PLACE_ITEMS.slice()
+    };
+
     try {
       const saved = JSON.parse(localStorage.getItem(SETTINGS_KEY)) || {};
+      if (Array.isArray(saved.placeItems)) {
+        return {
+          companies: Array.isArray(saved.companies) ? saved.companies : DEFAULT_COMPANIES.slice(),
+          contents: Array.isArray(saved.contents) ? saved.contents : DEFAULT_CONTENTS.slice(),
+          placeItems: uniqueObjectsByName(saved.placeItems)
+        };
+      }
+
+      const oldV2 = JSON.parse(localStorage.getItem("mobile_schedule_settings_v2")) || {};
+      const oldV1 = JSON.parse(localStorage.getItem("mobile_schedule_settings_v1")) || {};
+      const oldPlaces = Array.isArray(oldV2.places) ? oldV2.places : (Array.isArray(oldV1.places) ? oldV1.places : []);
+      const oldPlaceItems = oldPlaces.map(name => ({ name, sub: "", address: "" }));
+
       return {
-        companies: Array.isArray(saved.companies) ? saved.companies : [],
-        places: Array.isArray(saved.places) ? saved.places : []
+        companies: unique([...DEFAULT_COMPANIES, ...(Array.isArray(oldV2.companies) ? oldV2.companies : (Array.isArray(oldV1.companies) ? oldV1.companies : []))]),
+        contents: unique([...DEFAULT_CONTENTS, ...(Array.isArray(oldV2.contents) ? oldV2.contents : [])]),
+        placeItems: uniqueObjectsByName([...DEFAULT_PLACE_ITEMS, ...oldPlaceItems])
       };
     } catch {
-      return { companies: [], places: [] };
+      return defaults;
     }
   }
 
@@ -673,7 +1094,7 @@
   function exportBackup() {
     const data = {
       app: "Schedule Board",
-      version: 2,
+      version: 7,
       exportedAt: new Date().toISOString(),
       settings,
       events
@@ -696,18 +1117,18 @@
       const data = JSON.parse(text);
       const importedEvents = Array.isArray(data) ? data : data.events;
 
-      if (!Array.isArray(importedEvents)) {
-        throw new Error("events が見つかりません");
-      }
-
+      if (!Array.isArray(importedEvents)) throw new Error("events が見つかりません");
       if (!confirm("現在の予定をバックアップ内容で置き換えますか？")) return;
 
-      events = importedEvents;
+      events = importedEvents.map(normalizeEvent);
 
       if (data.settings) {
         settings = {
           companies: Array.isArray(data.settings.companies) ? data.settings.companies : settings.companies,
-          places: Array.isArray(data.settings.places) ? data.settings.places : settings.places
+          contents: Array.isArray(data.settings.contents) ? data.settings.contents : settings.contents,
+          placeItems: Array.isArray(data.settings.placeItems)
+            ? uniqueObjectsByName(data.settings.placeItems)
+            : settings.placeItems
         };
         saveSettings();
       }
@@ -723,27 +1144,51 @@
   }
 
   function loadEvents() {
-    try {
-      const oldV2 = JSON.parse(localStorage.getItem(STORAGE_KEY));
-      if (Array.isArray(oldV2)) return oldV2;
+    const keys = [
+      STORAGE_KEY,
+      "mobile_schedule_events_v4",
+      "mobile_schedule_events_v3",
+      "mobile_schedule_events_v2",
+      "mobile_schedule_events_v1"
+    ];
 
-      const oldV1 = JSON.parse(localStorage.getItem("mobile_schedule_events_v1"));
-      if (Array.isArray(oldV1)) {
-        return oldV1.map(e => ({
-          ...e,
-          company: e.company || e.assignee || "",
-          user: e.user || ""
-        }));
-      }
-
-      return [];
-    } catch {
-      return [];
+    for (const key of keys) {
+      try {
+        const data = JSON.parse(localStorage.getItem(key));
+        if (Array.isArray(data)) return data.map(normalizeEvent);
+      } catch {}
     }
+
+    return [];
+  }
+
+  function normalizeEvent(e) {
+    const item = getPlaceItemFromArray(e.place, settings?.placeItems || DEFAULT_PLACE_ITEMS) || {};
+    return {
+      ...e,
+      company: e.company || e.assignee || "",
+      content: e.content || e.title || "",
+      user: formatUserName(e.user || ""),
+      color: e.color || CARD_COLORS[0],
+      placeSub: e.placeSub || item.sub || "",
+      placeAddress: e.placeAddress || item.address || "",
+      keyNumber: e.keyNumber || item.key || ""
+    };
   }
 
   function saveEvents() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(events));
+  }
+
+  function formatUserName(name) {
+    const n = String(name || "").trim();
+    if (!n) return "";
+    if (n.endsWith("様")) return n;
+    return n + "様";
+  }
+
+  function removeSama(name) {
+    return String(name || "").replace(/様$/, "");
   }
 
   function toDateString(date) {
@@ -775,6 +1220,25 @@
 
   function unique(arr) {
     return [...new Set(arr.map(v => String(v).trim()).filter(Boolean))];
+  }
+
+  function uniqueObjectsByName(arr) {
+    const map = new Map();
+    for (const item of arr) {
+      if (!item || !String(item.name || "").trim()) continue;
+      const name = String(item.name).trim();
+      map.set(name, {
+        name,
+        sub: String(item.sub || "").trim(),
+        address: String(item.address || "").trim(),
+        key: String(item.key || "").trim()
+      });
+    }
+    return [...map.values()];
+  }
+
+  function getPlaceItemFromArray(name, arr) {
+    return (arr || []).find(item => item.name === name);
   }
 
   function makeId() {
