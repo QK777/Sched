@@ -1137,10 +1137,10 @@
     // まず現在の固定キーから読む。更新後もここを最優先にする。
     try {
       const saved = JSON.parse(localStorage.getItem(SETTINGS_KEY));
-      if (saved && Array.isArray(saved.companies) && Array.isArray(saved.placeItems)) {
+      if (saved?.companies && saved?.placeItems) {
         return {
           companies: saved.companies,
-          contents: Array.isArray(saved.contents) ? saved.contents : DEFAULT_CONTENTS.slice(),
+          contents: saved.contents,
           placeItems: saved.placeItems
         };
       }
