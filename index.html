@@ -264,9 +264,26 @@
 
     .time-row {
       display: grid;
-      grid-template-columns: minmax(0, 0.92fr) minmax(0, 0.92fr);
-      gap: 6px;
-      max-width: 96%;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 8px;
+      width: 100%;
+    }
+
+    .time-row input[type="time"] {
+      font-size: 14px;
+      padding: 10px 8px;
+      letter-spacing: -0.03em;
+    }
+
+    .time-row input[type="time"]::-webkit-calendar-picker-indicator {
+      margin-left: 0;
+      padding-left: 0;
+    }
+
+    @media (max-width: 360px) {
+      .time-row {
+        grid-template-columns: 1fr;
+      }
     }
 
     .form-row {
@@ -476,8 +493,8 @@
 </div>
 
 <script>
-  const STORAGE_KEY = "mobile_schedule_events_v7";
-  const SETTINGS_KEY = "mobile_schedule_settings_v7";
+  const STORAGE_KEY = "mobile_schedule_events_v8";
+  const SETTINGS_KEY = "mobile_schedule_settings_v8";
 
   const DEFAULT_COMPANIES = ["AirBnB", "オーナー"];
   const DEFAULT_CONTENTS = ["チェックイン", "清掃"];
@@ -868,7 +885,8 @@
       key: keyNumberInput.value || ""
     };
 
-    const newNameRaw = prompt("場所・物件を編集※空にしてOKを押すと削除", current.name);
+    const newNameRaw = prompt("場所・物件を編集
+※空にしてOKを押すと削除", current.name);
     if (newNameRaw === null) return;
 
     const newName = newNameRaw.trim();
@@ -1094,7 +1112,7 @@
   function exportBackup() {
     const data = {
       app: "Schedule Board",
-      version: 7,
+      version: 8,
       exportedAt: new Date().toISOString(),
       settings,
       events
