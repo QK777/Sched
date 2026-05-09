@@ -226,8 +226,11 @@
       left: 0;
       right: 0;
       bottom: 0;
+      width: 100%;
+      max-width: 100vw;
       max-height: 92vh;
       overflow-y: auto;
+      overflow-x: hidden;
       background: var(--panel);
       border-radius: 22px 22px 0 0;
       padding: 16px;
@@ -248,12 +251,21 @@
 
     input, textarea, select {
       width: 100%;
+      max-width: 100%;
       border: 1px solid var(--border);
       background: var(--bg);
       color: var(--text);
       border-radius: 12px;
       padding: 11px;
       font-size: 16px;
+      min-width: 0;
+    }
+
+    input[type="date"],
+    input[type="time"] {
+      -webkit-appearance: none;
+      appearance: none;
+      display: block;
       min-width: 0;
     }
 
@@ -264,22 +276,33 @@
 
     .time-row {
       display: grid;
-      grid-template-columns: 1fr;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
       gap: 8px;
       width: 100%;
+    }
+
+    .time-row > div {
+      min-width: 0;
     }
 
     .time-row input[type="time"] {
       width: 100%;
       max-width: 100%;
-      font-size: 16px;
-      padding: 11px;
-      letter-spacing: 0;
+      font-size: 15px;
+      padding: 10px 7px;
+      letter-spacing: -0.04em;
     }
 
     .time-row input[type="time"]::-webkit-calendar-picker-indicator {
-      margin-left: 0;
+      margin-left: -2px;
       padding-left: 0;
+      padding-right: 0;
+    }
+
+    .date-input {
+      font-size: 16px;
+      padding-left: 10px;
+      padding-right: 10px;
     }
 
     .form-row {
@@ -421,7 +444,7 @@
     <div class="palette" id="colorPalette"></div>
 
     <label>日付</label>
-    <input type="date" id="dateInput">
+    <input type="date" id="dateInput" class="date-input">
 
     <div class="time-row">
       <div>
@@ -489,8 +512,8 @@
 </div>
 
 <script>
-  const STORAGE_KEY = "mobile_schedule_events_v10";
-  const SETTINGS_KEY = "mobile_schedule_settings_v10";
+  const STORAGE_KEY = "mobile_schedule_events_v11";
+  const SETTINGS_KEY = "mobile_schedule_settings_v11";
 
   const DEFAULT_COMPANIES = ["AirBnB", "オーナー"];
   const DEFAULT_CONTENTS = ["チェックイン", "清掃"];
@@ -880,7 +903,8 @@
       key: keyNumberInput.value || ""
     };
 
-    const newNameRaw = prompt("場所・物件を編集※空にしてOKを押すと削除", current.name);
+    const newNameRaw = prompt("場所・物件を編集
+※空にしてOKを押すと削除", current.name);
     if (newNameRaw === null) return;
 
     const newName = newNameRaw.trim();
@@ -1106,7 +1130,7 @@
   function exportBackup() {
     const data = {
       app: "Schedule Board",
-      version: 10,
+      version: 11,
       exportedAt: new Date().toISOString(),
       settings,
       events
