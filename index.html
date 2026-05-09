@@ -459,6 +459,10 @@
     <button id="exportBtn">バックアップ</button>
     <button id="importBtn">復元</button>
   </div>
+  <div class="backup-row">
+    <button id="debugStorageBtn">保存状態確認</button>
+    <button id="forceSaveBtn">強制保存</button>
+  </div>
   <input id="importFile" type="file" accept="application/json" hidden>
 
   <div class="section-title" id="selectedDateLabel"></div>
@@ -653,6 +657,12 @@
   document.getElementById("exportBtn").onclick = exportBackup;
   document.getElementById("importBtn").onclick = () => document.getElementById("importFile").click();
   document.getElementById("importFile").onchange = importBackup;
+  document.getElementById("debugStorageBtn").onclick = debugStorage;
+  document.getElementById("forceSaveBtn").onclick = () => {
+    saveEvents();
+    saveSettings();
+    alert("強制保存しました。保存状態確認で件数を確認してください。");
+  };
 
   function render() {
     renderDates();
@@ -1124,55 +1134,24 @@
   }
 
   function loadSettings() {
-    const settingKeys = [
-      SETTINGS_KEY,
-      "mobile_schedule_settings_v16",
-      "mobile_schedule_settings_v15",
-      "mobile_schedule_settings_v14",
-      "mobile_schedule_settings_v13",
-      "mobile_schedule_settings_v12",
-      "mobile_schedule_settings_v11",
-      "mobile_schedule_settings_v10",
-      "mobile_schedule_settings_v9",
-      "mobile_schedule_settings_v8",
-      "mobile_schedule_settings_v7",
-      "mobile_schedule_settings_v6",
-      "mobile_schedule_settings_v5",
-      "mobile_schedule_settings_v4",
-      "mobile_schedule_settings_v3",
-      "mobile_schedule_settings_v2",
-      "mobile_schedule_settings_v1"
-    ];
+    // まず現在の固定キーから読む。更新後もここを最優先にする。
+    try {
+      const saved = JSON.parse(localStorage.getItem(SETTINGS_KEY));
+      if (saved && Array.isArray(saved.companies) && Array.isArray(saved.placeItems)) {
+        return {
+          companies: saved.companies,
+          contents: Array.isArray(saved.contents) ? saved.contents : DEFAULT_CONTENTS.slice(),
+          placeItems: saved.placeItems
+        };
+      }
+    } catch {}
 
-    let merged = {
+    // 初回のみデフォルト値を使う
+    return {
       companies: DEFAULT_COMPANIES.slice(),
       contents: DEFAULT_CONTENTS.slice(),
       placeItems: DEFAULT_PLACE_ITEMS.slice()
     };
-
-    for (const key of settingKeys) {
-      try {
-        const saved = JSON.parse(localStorage.getItem(key));
-        if (!saved) continue;
-
-        if (Array.isArray(saved.companies)) {
-          merged.companies = unique([...merged.companies, ...saved.companies]);
-        }
-
-        if (Array.isArray(saved.contents)) {
-          merged.contents = unique([...merged.contents, ...saved.contents]);
-        }
-
-        if (Array.isArray(saved.placeItems)) {
-          merged.placeItems = uniqueObjectsByName([...merged.placeItems, ...saved.placeItems]);
-        } else if (Array.isArray(saved.places)) {
-          const oldPlaceItems = saved.places.map(name => ({ name, sub: "", address: "", key: "" }));
-          merged.placeItems = uniqueObjectsByName([...merged.placeItems, ...oldPlaceItems]);
-        }
-      } catch {}
-    }
-
-    return merged;
   }
 
   function saveSettings() {
@@ -1186,7 +1165,7 @@
   function exportBackup() {
     const data = {
       app: "Schedule Board",
-      version: 17,
+      version: 19,
       exportedAt: new Date().toISOString(),
       settings,
       events
@@ -1236,8 +1215,18 @@
   }
 
   function loadEvents() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw !== null) {
+        const data = JSON.parse(raw);
+        if (Array.isArray(data)) return data.map(normalizeEvent);
+      }
+    } catch {}
+
+    // 固定キーがまだ無い場合だけ、旧バージョンの保存データを探す
     const keys = [
-      STORAGE_KEY,
+      "mobile_schedule_events_v18",
+      "mobile_schedule_events_v17",
       "mobile_schedule_events_v16",
       "mobile_schedule_events_v15",
       "mobile_schedule_events_v14",
@@ -1256,27 +1245,19 @@
       "mobile_schedule_events_v1"
     ];
 
-    let emptyCandidate = null;
-
     for (const key of keys) {
       try {
         const raw = localStorage.getItem(key);
         if (!raw) continue;
 
         const data = JSON.parse(raw);
-        if (!Array.isArray(data)) continue;
-
-        if (data.length > 0) {
+        if (Array.isArray(data) && data.length > 0) {
           return data.map(normalizeEvent);
-        }
-
-        if (emptyCandidate === null) {
-          emptyCandidate = data;
         }
       } catch {}
     }
 
-    return Array.isArray(emptyCandidate) ? emptyCandidate : [];
+    return [];
   }
 
   function normalizeEvent(e) {
@@ -1395,13 +1376,103 @@
     return "evt_" + Date.now() + "_" + Math.random().toString(16).slice(2);
   }
 
+  function debugStorage() {
+    const eventKeys = [
+      STORAGE_KEY,
+      "mobile_schedule_events_v17",
+      "mobile_schedule_events_v16",
+      "mobile_schedule_events_v15",
+      "mobile_schedule_events_v14",
+      "mobile_schedule_events_v13",
+      "mobile_schedule_events_v12",
+      "mobile_schedule_events_v11",
+      "mobile_schedule_events_v10",
+      "mobile_schedule_events_v9",
+      "mobile_schedule_events_v8",
+      "mobile_schedule_events_v7",
+      "mobile_schedule_events_v6",
+      "mobile_schedule_events_v5",
+      "mobile_schedule_events_v4",
+      "mobile_schedule_events_v3",
+      "mobile_schedule_events_v2",
+      "mobile_schedule_events_v1"
+    ];
+
+    const settingKeys = [
+      SETTINGS_KEY,
+      "mobile_schedule_settings_v17",
+      "mobile_schedule_settings_v16",
+      "mobile_schedule_settings_v15",
+      "mobile_schedule_settings_v14",
+      "mobile_schedule_settings_v13",
+      "mobile_schedule_settings_v12",
+      "mobile_schedule_settings_v11",
+      "mobile_schedule_settings_v10",
+      "mobile_schedule_settings_v9",
+      "mobile_schedule_settings_v8",
+      "mobile_schedule_settings_v7",
+      "mobile_schedule_settings_v6",
+      "mobile_schedule_settings_v5",
+      "mobile_schedule_settings_v4",
+      "mobile_schedule_settings_v3",
+      "mobile_schedule_settings_v2",
+      "mobile_schedule_settings_v1"
+    ];
+
+    let testResult = "OK";
+    try {
+      localStorage.setItem("__schedule_debug_test__", new Date().toISOString());
+      const readBack = localStorage.getItem("__schedule_debug_test__");
+      if (!readBack) testResult = "書き込み後の読み取り失敗";
+      localStorage.removeItem("__schedule_debug_test__");
+    } catch (err) {
+      testResult = "NG: " + err.name + " " + err.message;
+    }
+
+    const countArrayKey = (key) => {
+      try {
+        const raw = localStorage.getItem(key);
+        if (!raw) return "なし";
+        const data = JSON.parse(raw);
+        if (Array.isArray(data)) return `${data.length}件 / ${raw.length}文字`;
+        if (data && typeof data === "object") {
+          const parts = [];
+          if (Array.isArray(data.placeItems)) parts.push(`場所${data.placeItems.length}`);
+          if (Array.isArray(data.companies)) parts.push(`会社${data.companies.length}`);
+          if (Array.isArray(data.contents)) parts.push(`内容${data.contents.length}`);
+          return `${parts.join("・") || "object"} / ${raw.length}文字`;
+        }
+        return `${typeof data} / ${raw.length}文字`;
+      } catch (err) {
+        return "読取エラー";
+      }
+    };
+
+    const eventLines = eventKeys.map(k => `${k}: ${countArrayKey(k)}`).join("\n");
+    const settingLines = settingKeys.map(k => `${k}: ${countArrayKey(k)}`).join("\n");
+
+    const text =
+      `URL: ${location.href}\n` +
+      `origin: ${location.origin}\n` +
+      `protocol: ${location.protocol}\n` +
+      `localStorageテスト: ${testResult}\n` +
+      `現在の画面上の予定数: ${events.length}\n` +
+      `現在の場所設定数: ${settings.placeItems.length}\n\n` +
+      `【予定キー】\n${eventLines}\n\n` +
+      `【設定キー】\n${settingLines}`;
+
+    console.log(text);
+    alert(text);
+  }
+
   function migrateLocalStorageToStableKeys() {
     if (!isLocalStorageAvailable()) {
       alert("この開き方では保存が残らない可能性があります。GitHub PagesなどのURLからSafari/Chromeで開いてください。");
       return;
     }
-    saveEvents();
-    saveSettings();
+
+    // 起動時にデフォルト値を自動保存しない。
+    // 保存は、予定追加・編集・強制保存・設定変更時だけ行う。
   }
 
   function isLocalStorageAvailable() {
