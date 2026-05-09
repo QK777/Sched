@@ -261,8 +261,7 @@
       min-width: 0;
     }
 
-    input[type="date"],
-    input[type="time"] {
+    input[type="date"] {
       -webkit-appearance: none;
       appearance: none;
       display: block;
@@ -285,18 +284,14 @@
       min-width: 0;
     }
 
-    .time-row input[type="time"] {
+    .time-row input {
       width: 100%;
       max-width: 100%;
-      font-size: 15px;
-      padding: 10px 7px;
-      letter-spacing: -0.04em;
-    }
-
-    .time-row input[type="time"]::-webkit-calendar-picker-indicator {
-      margin-left: -2px;
-      padding-left: 0;
-      padding-right: 0;
+      height: 46px;
+      line-height: 1.2;
+      font-size: 16px;
+      padding: 10px 11px;
+      letter-spacing: 0;
     }
 
     .date-input {
@@ -449,11 +444,11 @@
     <div class="time-row">
       <div>
         <label>開始</label>
-        <input type="time" id="startInput">
+        <input type="text" id="startInput" inputmode="numeric" placeholder="例：10:00" autocomplete="off">
       </div>
       <div>
         <label>終了</label>
-        <input type="time" id="endInput">
+        <input type="text" id="endInput" inputmode="numeric" placeholder="例：15:00" autocomplete="off">
       </div>
     </div>
 
@@ -512,8 +507,8 @@
 </div>
 
 <script>
-  const STORAGE_KEY = "mobile_schedule_events_v12";
-  const SETTINGS_KEY = "mobile_schedule_settings_v12";
+  const STORAGE_KEY = "mobile_schedule_events_v13";
+  const SETTINGS_KEY = "mobile_schedule_settings_v13";
 
   const DEFAULT_COMPANIES = ["AirBnB", "オーナー"];
   const DEFAULT_CONTENTS = ["チェックイン", "清掃"];
@@ -768,8 +763,8 @@
     const ev = {
       id,
       date: dateInput.value,
-      startTime: startInput.value,
-      endTime: endInput.value,
+      startTime: normalizeTimeInput(startInput.value),
+      endTime: normalizeTimeInput(endInput.value),
       place: placeInput.value,
       placeSub: placeSubInput.value.trim(),
       placeAddress: placeAddressInput.value.trim(),
@@ -1129,7 +1124,7 @@
   function exportBackup() {
     const data = {
       app: "Schedule Board",
-      version: 12,
+      version: 13,
       exportedAt: new Date().toISOString(),
       settings,
       events
@@ -1224,6 +1219,34 @@
 
   function removeSama(name) {
     return String(name || "").replace(/様$/, "");
+  }
+
+  function normalizeTimeInput(value) {
+    const raw = String(value || "").trim();
+    if (!raw) return "";
+
+    // 930 -> 09:30 / 9:30 -> 09:30 / 09：30 -> 09:30
+    const normalized = raw.replace("：", ":");
+
+    const compact = normalized.match(/^(\d{1,2})(\d{2})$/);
+    if (compact) {
+      const h = Number(compact[1]);
+      const m = Number(compact[2]);
+      if (h >= 0 && h <= 23 && m >= 0 && m <= 59) {
+        return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+      }
+    }
+
+    const colon = normalized.match(/^(\d{1,2}):(\d{1,2})$/);
+    if (colon) {
+      const h = Number(colon[1]);
+      const m = Number(colon[2]);
+      if (h >= 0 && h <= 23 && m >= 0 && m <= 59) {
+        return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+      }
+    }
+
+    return raw;
   }
 
   function toDateString(date) {
