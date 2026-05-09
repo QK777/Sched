@@ -284,14 +284,23 @@
       min-width: 0;
     }
 
-    .time-row input {
+    .time-row input[type="time"] {
       width: 100%;
       max-width: 100%;
+      min-width: 0;
       height: 46px;
       line-height: 1.2;
       font-size: 16px;
-      padding: 10px 11px;
-      letter-spacing: 0;
+      padding: 10px 8px;
+      letter-spacing: -0.02em;
+      -webkit-appearance: menulist;
+      appearance: auto;
+    }
+
+    .time-row input[type="time"]::-webkit-calendar-picker-indicator {
+      margin-left: 0;
+      padding-left: 0;
+      padding-right: 0;
     }
 
     .date-input {
@@ -444,11 +453,11 @@
     <div class="time-row">
       <div>
         <label>開始</label>
-        <input type="text" id="startInput" inputmode="numeric" placeholder="例：10:00" autocomplete="off">
+        <input type="time" id="startInput">
       </div>
       <div>
         <label>終了</label>
-        <input type="text" id="endInput" inputmode="numeric" placeholder="例：15:00" autocomplete="off">
+        <input type="time" id="endInput">
       </div>
     </div>
 
@@ -763,8 +772,8 @@
     const ev = {
       id,
       date: dateInput.value,
-      startTime: normalizeTimeInput(startInput.value),
-      endTime: normalizeTimeInput(endInput.value),
+      startTime: startInput.value,
+      endTime: endInput.value,
       place: placeInput.value,
       placeSub: placeSubInput.value.trim(),
       placeAddress: placeAddressInput.value.trim(),
@@ -1143,7 +1152,7 @@
   function exportBackup() {
     const data = {
       app: "Schedule Board",
-      version: 14,
+      version: 15,
       exportedAt: new Date().toISOString(),
       settings,
       events
@@ -1333,8 +1342,23 @@
   }
 
   function migrateLocalStorageToStableKeys() {
+    if (!isLocalStorageAvailable()) {
+      alert("この開き方では保存が残らない可能性があります。GitHub PagesなどのURLからSafari/Chromeで開いてください。");
+      return;
+    }
     saveEvents();
     saveSettings();
+  }
+
+  function isLocalStorageAvailable() {
+    try {
+      const testKey = "__schedule_storage_test__";
+      localStorage.setItem(testKey, "1");
+      localStorage.removeItem(testKey);
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   function scrollActiveDateIntoView() {
