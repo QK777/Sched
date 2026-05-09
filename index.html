@@ -264,26 +264,22 @@
 
     .time-row {
       display: grid;
-      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      grid-template-columns: 1fr;
       gap: 8px;
       width: 100%;
     }
 
     .time-row input[type="time"] {
-      font-size: 14px;
-      padding: 10px 8px;
-      letter-spacing: -0.03em;
+      width: 100%;
+      max-width: 100%;
+      font-size: 16px;
+      padding: 11px;
+      letter-spacing: 0;
     }
 
     .time-row input[type="time"]::-webkit-calendar-picker-indicator {
       margin-left: 0;
       padding-left: 0;
-    }
-
-    @media (max-width: 360px) {
-      .time-row {
-        grid-template-columns: 1fr;
-      }
     }
 
     .form-row {
@@ -493,8 +489,8 @@
 </div>
 
 <script>
-  const STORAGE_KEY = "mobile_schedule_events_v8";
-  const SETTINGS_KEY = "mobile_schedule_settings_v8";
+  const STORAGE_KEY = "mobile_schedule_events_v10";
+  const SETTINGS_KEY = "mobile_schedule_settings_v10";
 
   const DEFAULT_COMPANIES = ["AirBnB", "オーナー"];
   const DEFAULT_CONTENTS = ["チェックイン", "清掃"];
@@ -804,8 +800,7 @@
     placeInput.innerHTML =
       `<option value="">選択してください</option>` +
       values.map(v => {
-        const label = [v.name, v.sub, v.address, v.key ? "鍵:" + v.key : ""].filter(Boolean).join("　");
-        return `<option value="${escapeAttr(v.name)}">${escapeHtml(label)}</option>`;
+        return `<option value="${escapeAttr(v.name)}">${escapeHtml(v.name)}</option>`;
       }).join("");
   }
 
@@ -1111,7 +1106,7 @@
   function exportBackup() {
     const data = {
       app: "Schedule Board",
-      version: 8,
+      version: 10,
       exportedAt: new Date().toISOString(),
       settings,
       events
