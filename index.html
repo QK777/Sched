@@ -1,16 +1,6 @@
 <!doctype html>
 <html lang="ja">
 <head>
-  <link rel="apple-touch-icon" sizes="180x180" href="./icon-180.png">
-  <link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png">
-  <link rel="manifest" href="./manifest.json">
-
-  <meta name="theme-color" content="#0f1117">
-  <meta name="mobile-web-app-capable" content="yes">
-
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-title" content="Schedule Board">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Schedule Board</title>
@@ -258,9 +248,41 @@
       border-top: 1px solid var(--border);
     }
 
-    .sheet h2 {
+    .sheet-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
       margin: 0 0 12px;
+    }
+
+    .sheet h2 {
+      margin: 0;
       font-size: 18px;
+    }
+
+    .sheet-close {
+      width: 40px;
+      height: 40px;
+      min-width: 40px;
+      padding: 0;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.16);
+      background: rgba(255,255,255,0.08);
+      color: var(--text);
+      font-size: 22px;
+      font-weight: 700;
+      line-height: 1;
+      display: grid;
+      place-items: center;
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.12), 0 8px 24px rgba(0,0,0,0.22);
+    }
+
+    .sheet-close:active {
+      transform: scale(0.94);
+      background: rgba(255,255,255,0.14);
     }
 
     label {
@@ -308,14 +330,12 @@
 
     .time-row > div {
       min-width: 0;
-      display: grid;
-      grid-template-columns: auto minmax(0, 1fr);
-      gap: 5px;
-      align-items: center;
+      display: block;
     }
 
     .time-row label {
-      margin: 0;
+      display: block;
+      margin: 0 0 4px;
       font-size: 12px;
       white-space: nowrap;
     }
@@ -340,10 +360,21 @@
       height: 14px;
     }
 
+    .date-range-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 8px;
+      width: 100%;
+    }
+
+    .date-range-row > div {
+      min-width: 0;
+    }
+
     .date-input {
-      font-size: 16px;
-      padding-left: 10px;
-      padding-right: 10px;
+      font-size: 15px;
+      padding-left: 8px;
+      padding-right: 8px;
       height: 42px;
     }
 
@@ -494,23 +525,34 @@
 
 <div class="sheet-backdrop" id="sheetBackdrop">
   <div class="sheet">
-    <h2 id="sheetTitle">予定を追加</h2>
+    <div class="sheet-head">
+      <h2 id="sheetTitle">予定を追加</h2>
+      <button class="sheet-close" id="sheetCloseBtn" type="button" aria-label="閉じる">×</button>
+    </div>
 
     <input type="hidden" id="eventId">
 
     <label>カード枠の色</label>
     <div class="palette" id="colorPalette"></div>
 
-    <label>日付</label>
-    <input type="date" id="dateInput" class="date-input">
+    <div class="date-range-row">
+      <div>
+        <label>チェックイン</label>
+        <input type="date" id="checkinInput" class="date-input">
+      </div>
+      <div>
+        <label>チェックアウト</label>
+        <input type="date" id="checkoutInput" class="date-input">
+      </div>
+    </div>
 
     <div class="time-row time-after-date">
       <div>
-        <label>開始</label>
+        <label>時間①</label>
         <input type="time" id="startInput">
       </div>
       <div>
-        <label>終了</label>
+        <label>時間②</label>
         <input type="time" id="endInput">
       </div>
     </div>
@@ -520,21 +562,7 @@
       <select id="placeInput"></select>
       <button class="add-small" id="addPlaceBtn" type="button">追加</button>
     </div>
-    <div class="place-detail-row">
-      <div>
-        <label>建物名・屋号など</label>
-        <input id="placeSubInput" placeholder="例：ウエストヒルズ邸">
-      </div>
-      <div>
-        <label>住所・番号など</label>
-        <input id="placeAddressInput" placeholder="例：1049-3">
-      </div>
-    </div>
-
-    <label>鍵番号</label>
-    <input id="keyNumberInput" placeholder="例：1234 / キーボックスA">
-
-    <div class="hint">場所を選ぶと登録済みの建物名・番号・鍵番号が自動入力されます。追加ボタンは通常タップで新規追加、長押しで選択中の項目を編集できます。編集時に最初の項目名を空にすると削除します。</div>
+    <div class="hint">場所に紐づく建物名・番号・鍵番号は、トップページのカードにだけ自動表示します。追加ボタンは通常タップで新規追加、長押しで選択中の項目を編集できます。編集時に最初の項目名を空にすると削除します。</div>
 
     <label>会社名</label>
     <div class="select-add-row">
@@ -559,6 +587,12 @@
       <button class="add-small" id="addContentBtn" type="button">追加</button>
     </div>
 
+    <label>担当者</label>
+    <div class="select-add-row">
+      <select id="staffInput"></select>
+      <button class="add-small" id="addStaffBtn" type="button">追加</button>
+    </div>
+
     <label>メモ</label>
     <textarea id="noteInput" placeholder="備考を入力"></textarea>
 
@@ -574,7 +608,13 @@
   const SETTINGS_KEY = "mobile_schedule_settings";
 
   const DEFAULT_COMPANIES = ["AirBnB", "オーナー"];
-  const DEFAULT_CONTENTS = ["チェックイン", "清掃"];
+  const DEFAULT_CONTENTS = [
+    "日帰り",
+    "連泊（チェックイン）",
+    "連泊（清掃）",
+    "連泊（チェックアウト）"
+  ];
+  const DEFAULT_STAFFS = [];
 
   const CARD_COLORS = [
     "#6aa6ff",
@@ -617,14 +657,13 @@
 
   const eventId = document.getElementById("eventId");
   const colorPalette = document.getElementById("colorPalette");
-  const dateInput = document.getElementById("dateInput");
+  const checkinInput = document.getElementById("checkinInput");
+  const checkoutInput = document.getElementById("checkoutInput");
   const startInput = document.getElementById("startInput");
   const endInput = document.getElementById("endInput");
   const placeInput = document.getElementById("placeInput");
-  const placeSubInput = document.getElementById("placeSubInput");
-  const placeAddressInput = document.getElementById("placeAddressInput");
-  const keyNumberInput = document.getElementById("keyNumberInput");
   const companyInput = document.getElementById("companyInput");
+  const staffInput = document.getElementById("staffInput");
   const userInput = document.getElementById("userInput");
   const peopleInput = document.getElementById("peopleInput");
   const contentInput = document.getElementById("contentInput");
@@ -654,15 +693,8 @@
 
   document.getElementById("addBtn").onclick = () => openSheet();
 
-  placeInput.addEventListener("change", () => {
-    const item = getPlaceItem(placeInput.value);
-    if (!item) return;
-    placeSubInput.value = item.sub || "";
-    placeAddressInput.value = item.address || "";
-    keyNumberInput.value = item.key || "";
-  });
-
   setupAddDeleteButton("addCompanyBtn", "companies", "会社名を追加", companyInput, renderCompanyOptions);
+  setupAddDeleteButton("addStaffBtn", "staffs", "担当者を追加", staffInput, renderStaffOptions);
   setupAddDeleteButton("addContentBtn", "contents", "内容を追加", contentInput, renderContentOptions);
   setupPlaceAddDeleteButton();
 
@@ -672,6 +704,7 @@
 
   document.getElementById("saveBtn").onclick = saveEvent;
   document.getElementById("deleteBtn").onclick = deleteEvent;
+  document.getElementById("sheetCloseBtn").onclick = closeSheet;
   searchInput.oninput = renderEvents;
 
   document.getElementById("exportBtn").onclick = exportBackup;
@@ -712,8 +745,8 @@
       .filter(e => {
         if (!keyword) return true;
         const text = [
-          e.content, e.title, e.place, e.placeSub, e.placeAddress, e.keyNumber,
-          e.company, e.assignee, e.user, e.note
+          e.content, e.title, e.checkinDate, e.checkoutDate, e.place, e.placeSub, e.placeAddress, e.keyNumber,
+          e.company, e.staff, e.assignee, e.user, e.note
         ].join(" ").toLowerCase();
         return text.includes(keyword);
       })
@@ -729,27 +762,35 @@
 
     for (const ev of dayEvents) {
       const company = ev.company || ev.assignee || "-";
+      const staff = ev.staff || "-";
       const content = ev.content || ev.title || "-";
+      const placeItem = getPlaceItem(ev.place) || {};
+      const displayPlaceSub = placeItem.sub || ev.placeSub || "";
+      const displayPlaceAddress = placeItem.address || ev.placeAddress || "";
+      const displayKeyNumber = placeItem.key || ev.keyNumber || "";
       const card = document.createElement("div");
       card.className = "event-card";
       card.style.setProperty("--card-color", ev.color || CARD_COLORS[0]);
-      const timeLine = (ev.startTime || ev.endTime)
-        ? `<div class="event-time">${ev.startTime || ""}${ev.startTime && ev.endTime ? " - " : ""}${ev.endTime || ""}</div>`
+      const timeParts = [];
+      if (ev.startTime) timeParts.push(`時間①：${escapeHtml(ev.startTime)}`);
+      if (ev.endTime) timeParts.push(`時間②：${escapeHtml(ev.endTime)}`);
+      const timeLine = timeParts.length
+        ? `<div class="event-time">${timeParts.join("　")}</div>`
         : "";
 
       card.innerHTML = `
         <div class="event-title">
           <div class="place-line">
             <span class="place-main">${escapeHtml(ev.place || "場所未設定")}</span>
-            ${ev.placeSub ? `<span class="place-sub">${escapeHtml(ev.placeSub)}</span>` : ""}
-            ${ev.placeAddress ? `<span class="place-address">${escapeHtml(ev.placeAddress)}</span>` : ""}
+            ${displayPlaceSub ? `<span class="place-sub">${escapeHtml(displayPlaceSub)}</span>` : ""}
+            ${displayPlaceAddress ? `<span class="place-address">${escapeHtml(displayPlaceAddress)}</span>` : ""}
           </div>
         </div>
-        ${ev.keyNumber ? `<div class="key-line"><span class="key-label">鍵</span>${escapeHtml(ev.keyNumber)}</div>` : ""}
+        ${displayKeyNumber ? `<div class="key-line"><span class="key-label">鍵</span>${escapeHtml(displayKeyNumber)}</div>` : ""}
         ${timeLine}
         <div class="event-meta">
-          内容：${escapeHtml(content)}<br>
-          会社：${escapeHtml(company)} / 利用者：${escapeHtml(formatUserName(ev.user) || "-")}${ev.people ? " / " + ev.people + "名" : ""}<br>
+          内容：${escapeHtml(content)}${staff && staff !== "-" ? " / " + escapeHtml(staff) : ""}<br>
+          ${escapeHtml(company)} / ${escapeHtml(formatUserName(ev.user) || "-")}${ev.people ? " / " + ev.people + "名" : ""}<br>
           ${ev.note ? "メモ：" + escapeHtml(ev.note) : ""}
         </div>
       `;
@@ -766,21 +807,19 @@
 
     renderPlaceOptions(ev?.place || "");
     renderCompanyOptions(ev?.company || ev?.assignee || "");
+    renderStaffOptions(ev?.staff || "");
     renderContentOptions(ev?.content || ev?.title || "");
     renderPeopleOptions(ev?.people || "");
 
     eventId.value = ev?.id || "";
-    dateInput.value = ev?.date || selectedDate;
+    checkinInput.value = ev?.checkinDate || ev?.date || selectedDate;
+    checkoutInput.value = ev?.checkoutDate || ev?.date || selectedDate;
     startInput.value = ev?.startTime || "";
     endInput.value = ev?.endTime || "";
     placeInput.value = ev?.place || "";
 
-    const placeItem = getPlaceItem(placeInput.value) || {};
-    placeSubInput.value = ev?.placeSub || placeItem.sub || "";
-    placeAddressInput.value = ev?.placeAddress || placeItem.address || "";
-    keyNumberInput.value = ev?.keyNumber || placeItem.key || "";
-
     companyInput.value = ev?.company || ev?.assignee || "";
+    staffInput.value = ev?.staff || "";
     userInput.value = removeSama(ev?.user || "");
     peopleInput.value = ev?.people || "";
     contentInput.value = ev?.content || ev?.title || "";
@@ -811,40 +850,122 @@
   }
 
   function saveEvent() {
-    const id = eventId.value || makeId();
+    const checkinDate = checkinInput.value;
+    const checkoutDate = checkoutInput.value || checkinDate;
 
-    const ev = {
-      id,
-      date: dateInput.value,
-      startTime: startInput.value,
-      endTime: endInput.value,
-      place: placeInput.value,
-      placeSub: placeSubInput.value.trim(),
-      placeAddress: placeAddressInput.value.trim(),
-      keyNumber: keyNumberInput.value.trim(),
-      company: companyInput.value,
-      user: formatUserName(userInput.value.trim()),
-      people: peopleInput.value,
-      content: contentInput.value,
-      color: selectedColor,
-      note: noteInput.value.trim()
-    };
-
-    if (!ev.date) {
-      alert("日付を入力してください。");
+    if (!checkinDate) {
+      alert("チェックイン日を入力してください。");
       return;
     }
 
-    const index = events.findIndex(e => e.id === id);
-    if (index >= 0) events[index] = ev;
-    else events.push(ev);
+    if (checkoutDate < checkinDate) {
+      alert("チェックアウト日はチェックイン日以降にしてください。");
+      return;
+    }
 
-    selectedDate = ev.date;
-    current = new Date(ev.date + "T00:00:00");
-    resetDateWindowAroundCurrent();
+    const selectedPlaceItem = getPlaceItem(placeInput.value) || {};
+    const existingId = eventId.value;
+
+    const baseEvent = {
+      startTime: startInput.value,
+      endTime: endInput.value,
+      place: placeInput.value,
+      placeSub: selectedPlaceItem.sub || "",
+      placeAddress: selectedPlaceItem.address || "",
+      keyNumber: selectedPlaceItem.key || "",
+      company: companyInput.value,
+      staff: staffInput.value,
+      user: formatUserName(userInput.value.trim()),
+      people: peopleInput.value,
+      color: selectedColor,
+      note: noteInput.value.trim(),
+      checkinDate,
+      checkoutDate
+    };
+
+    // 既存カードの編集時は、そのカード1件だけを更新する。
+    // 新規追加時だけ、チェックイン～チェックアウトの範囲に応じて自動生成する。
+    if (existingId) {
+      const ev = {
+        ...baseEvent,
+        id: existingId,
+        date: checkinDate,
+        content: contentInput.value
+      };
+
+      const index = events.findIndex(e => e.id === existingId);
+      if (index >= 0) events[index] = ev;
+      else events.push(ev);
+
+      selectedDate = ev.date;
+      current = new Date(ev.date + "T00:00:00");
+
+      saveEvents();
+      closeSheet();
+
+      const keepScrollLeft = dateStrip.scrollLeft;
+      renderDates(true);
+      dateStrip.scrollLeft = keepScrollLeft;
+      updateDateActiveStates();
+      renderEvents();
+      updateMonthLabelByStripCenter();
+      return;
+    }
+
+    const generated = createStayEvents(baseEvent);
+
+    events.push(...generated);
+
+    selectedDate = checkinDate;
+    current = new Date(checkinDate + "T00:00:00");
+
     saveEvents();
     closeSheet();
-    render();
+
+    const keepScrollLeft = dateStrip.scrollLeft;
+    renderDates(true);
+    dateStrip.scrollLeft = keepScrollLeft;
+    updateDateActiveStates();
+    renderEvents();
+    updateMonthLabelByStripCenter();
+  }
+
+  function createStayEvents(baseEvent) {
+    const dates = enumerateDates(baseEvent.checkinDate, baseEvent.checkoutDate);
+
+    return dates.map((dateStr, index) => {
+      let content;
+
+      if (dates.length === 1) {
+        content = "日帰り";
+      } else if (index === 0) {
+        content = "連泊（チェックイン）";
+      } else if (index === dates.length - 1) {
+        content = "連泊（チェックアウト）";
+      } else {
+        content = "連泊（清掃）";
+      }
+
+      return {
+        ...baseEvent,
+        id: makeId(),
+        date: dateStr,
+        content
+      };
+    });
+  }
+
+  function enumerateDates(startDate, endDate) {
+    const result = [];
+    const d = new Date(startDate + "T00:00:00");
+    const end = new Date(endDate + "T00:00:00");
+
+    while (d <= end) {
+      result.push(toDateString(d));
+      d.setDate(d.getDate() + 1);
+    }
+
+    return result;
   }
 
   function deleteEvent() {
@@ -879,6 +1000,11 @@
   function renderCompanyOptions(selectedValue = "") {
     const values = unique([...settings.companies, selectedValue].filter(Boolean));
     companyInput.innerHTML = `<option value="">選択してください</option>` + values.map(v => `<option value="${escapeAttr(v)}">${escapeHtml(v)}</option>`).join("");
+  }
+
+  function renderStaffOptions(selectedValue = "") {
+    const values = unique([...settings.staffs, selectedValue].filter(Boolean));
+    staffInput.innerHTML = `<option value="">選択してください</option>` + values.map(v => `<option value="${escapeAttr(v)}">${escapeHtml(v)}</option>`).join("");
   }
 
   function renderContentOptions(selectedValue = "") {
@@ -920,9 +1046,6 @@
 
       renderPlaceOptions(name.trim());
       placeInput.value = name.trim();
-      placeSubInput.value = sub.trim();
-      placeAddressInput.value = address.trim();
-      keyNumberInput.value = key.trim();
     });
 
     btn.addEventListener("pointerdown", () => {
@@ -947,9 +1070,9 @@
 
     const current = getPlaceItem(oldName) || {
       name: oldName,
-      sub: placeSubInput.value || "",
-      address: placeAddressInput.value || "",
-      key: keyNumberInput.value || ""
+      sub: "",
+      address: "",
+      key: ""
     };
 
     const newNameRaw = prompt("場所・物件を編集\n※空にしてOKを押すと削除", current.name);
@@ -991,9 +1114,6 @@
 
     renderPlaceOptions(edited.name);
     placeInput.value = edited.name;
-    placeSubInput.value = edited.sub;
-    placeAddressInput.value = edited.address;
-    keyNumberInput.value = edited.key;
     render();
   }
 
@@ -1015,9 +1135,6 @@
     saveEvents();
 
     placeInput.value = "";
-    placeSubInput.value = "";
-    placeAddressInput.value = "";
-    keyNumberInput.value = "";
     renderPlaceOptions("");
     render();
   }
@@ -1095,6 +1212,11 @@
       contentInput.value = newValue;
     }
 
+    if (type === "staffs") {
+      events = events.map(ev => ev.staff === oldValue ? { ...ev, staff: newValue } : ev);
+      staffInput.value = newValue;
+    }
+
     saveEvents();
     renderFn(newValue);
     selectEl.value = newValue;
@@ -1113,6 +1235,10 @@
 
     if (type === "contents") {
       events = events.map(ev => ev.content === value ? { ...ev, content: "" } : ev);
+    }
+
+    if (type === "staffs") {
+      events = events.map(ev => ev.staff === value ? { ...ev, staff: "" } : ev);
     }
 
     saveEvents();
@@ -1140,7 +1266,8 @@
       if (saved?.companies && saved?.placeItems) {
         return {
           companies: saved.companies,
-          contents: saved.contents,
+          contents: Array.isArray(saved.contents) ? saved.contents : DEFAULT_CONTENTS.slice(),
+          staffs: Array.isArray(saved.staffs) ? saved.staffs : DEFAULT_STAFFS.slice(),
           placeItems: saved.placeItems
         };
       }
@@ -1149,6 +1276,7 @@
     return {
       companies: DEFAULT_COMPANIES.slice(),
       contents: DEFAULT_CONTENTS.slice(),
+      staffs: DEFAULT_STAFFS.slice(),
       placeItems: DEFAULT_PLACE_ITEMS.slice()
     };
   }
@@ -1164,7 +1292,7 @@
   function exportBackup() {
     const data = {
       app: "Schedule Board",
-      version: 27,
+      version: 37,
       exportedAt: new Date().toISOString(),
       settings,
       events
@@ -1196,6 +1324,7 @@
         settings = {
           companies: Array.isArray(data.settings.companies) ? data.settings.companies : settings.companies,
           contents: Array.isArray(data.settings.contents) ? data.settings.contents : settings.contents,
+          staffs: Array.isArray(data.settings.staffs) ? data.settings.staffs : settings.staffs,
           placeItems: Array.isArray(data.settings.placeItems)
             ? uniqueObjectsByName(data.settings.placeItems)
             : settings.placeItems
@@ -1230,9 +1359,12 @@
     return {
       ...e,
       company: e.company || e.assignee || "",
+      staff: e.staff || "",
       content: e.content || e.title || "",
       user: formatUserName(e.user || ""),
       color: e.color || CARD_COLORS[0],
+      checkinDate: e.checkinDate || e.date || "",
+      checkoutDate: e.checkoutDate || e.date || "",
       placeSub: e.placeSub || item.sub || "",
       placeAddress: e.placeAddress || item.address || "",
       keyNumber: e.keyNumber || item.key || ""
