@@ -116,21 +116,18 @@
       padding-bottom: 96px;
     }
 
-    .toolbar {
+    .top-actions {
       display: grid;
-      grid-template-columns: 1fr auto;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: 8px;
       margin-bottom: 10px;
     }
 
-    .search {
-      border: 1px solid var(--border);
-      background: var(--panel);
-      color: var(--text);
-      border-radius: 12px;
-      padding: 11px;
-      font-size: 16px;
+    .top-actions button {
       min-width: 0;
+      padding-left: 8px;
+      padding-right: 8px;
+      white-space: nowrap;
     }
 
     .section-title {
@@ -371,11 +368,43 @@
       min-width: 0;
     }
 
-    .date-input {
-      font-size: 15px;
-      padding-left: 8px;
-      padding-right: 8px;
+    .date-label-row {
+      margin: 10px 0 4px;
+    }
+
+    .date-label-row label {
+      margin: 0;
+    }
+
+    .date-picker-wrap {
+      position: relative;
+      width: 100%;
+    }
+
+    .date-display {
+      width: 100%;
       height: 42px;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      color: var(--text);
+      border-radius: 12px;
+      padding: 0 10px;
+      font-size: 15px;
+      font-weight: 500;
+      text-align: left;
+    }
+
+    .date-display.empty {
+      color: var(--muted);
+    }
+
+    .date-input {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 42px;
+      opacity: 0;
+      pointer-events: none;
     }
 
     @media (max-width: 340px) {
@@ -506,12 +535,8 @@
 </header>
 
 <main>
-  <div class="toolbar">
-    <input class="search" id="searchInput" placeholder="物件名・会社名・利用者・内容で検索">
+  <div class="top-actions">
     <button id="todayBtn">今日</button>
-  </div>
-
-  <div class="backup-row">
     <button id="exportBtn">バックアップ</button>
     <button id="importBtn">復元</button>
   </div>
@@ -537,12 +562,22 @@
 
     <div class="date-range-row">
       <div>
-        <label>チェックイン</label>
-        <input type="date" id="checkinInput" class="date-input">
+        <div class="date-label-row">
+          <label>チェックイン</label>
+        </div>
+        <div class="date-picker-wrap">
+          <button class="date-display empty" id="checkinDisplayBtn" type="button">日付を選択</button>
+          <input type="date" id="checkinInput" class="date-input">
+        </div>
       </div>
       <div>
-        <label>チェックアウト</label>
-        <input type="date" id="checkoutInput" class="date-input">
+        <div class="date-label-row">
+          <label>チェックアウト</label>
+        </div>
+        <div class="date-picker-wrap">
+          <button class="date-display empty" id="checkoutDisplayBtn" type="button">日付を選択</button>
+          <input type="date" id="checkoutInput" class="date-input">
+        </div>
       </div>
     </div>
 
@@ -636,6 +671,16 @@
     { name: "LAKE Terrace 4-661", sub: "堂阪邸", address: "1039-74", key: "" }
   ];
 
+  const PLACE_SORT_ORDER = [
+    "レイクウエスト 4-711",
+    "湖辺のくつろぎ、時々サウナ (4-656)",
+    "LAKE Terrace 6-904",
+    "TAKASHIMA BEST SO (4-625/626)",
+    "風車村 びわ湖の家 1011 (4-657)",
+    "湖Co (12-20)",
+    "LAKE Terrace 4-661"
+  ];
+
   let current = new Date();
   let selectedDate = toDateString(new Date());
   let selectedColor = CARD_COLORS[0];
@@ -650,7 +695,6 @@
   const monthLabel = document.getElementById("monthLabel");
   const selectedDateLabel = document.getElementById("selectedDateLabel");
   const eventList = document.getElementById("eventList");
-  const searchInput = document.getElementById("searchInput");
 
   const sheetBackdrop = document.getElementById("sheetBackdrop");
   const sheetTitle = document.getElementById("sheetTitle");
@@ -659,6 +703,8 @@
   const colorPalette = document.getElementById("colorPalette");
   const checkinInput = document.getElementById("checkinInput");
   const checkoutInput = document.getElementById("checkoutInput");
+  const checkinDisplayBtn = document.getElementById("checkinDisplayBtn");
+  const checkoutDisplayBtn = document.getElementById("checkoutDisplayBtn");
   const startInput = document.getElementById("startInput");
   const endInput = document.getElementById("endInput");
   const placeInput = document.getElementById("placeInput");
@@ -693,6 +739,12 @@
 
   document.getElementById("addBtn").onclick = () => openSheet();
 
+  checkinInput.addEventListener("change", updateDateDisplayLabels);
+  checkoutInput.addEventListener("change", updateDateDisplayLabels);
+
+  checkinDisplayBtn.onclick = () => openNativeDatePicker(checkinInput);
+  checkoutDisplayBtn.onclick = () => openNativeDatePicker(checkoutInput);
+
   setupAddDeleteButton("addCompanyBtn", "companies", "会社名を追加", companyInput, renderCompanyOptions);
   setupAddDeleteButton("addStaffBtn", "staffs", "担当者を追加", staffInput, renderStaffOptions);
   setupAddDeleteButton("addContentBtn", "contents", "内容を追加", contentInput, renderContentOptions);
@@ -705,7 +757,6 @@
   document.getElementById("saveBtn").onclick = saveEvent;
   document.getElementById("deleteBtn").onclick = deleteEvent;
   document.getElementById("sheetCloseBtn").onclick = closeSheet;
-  searchInput.oninput = renderEvents;
 
   document.getElementById("exportBtn").onclick = exportBackup;
   document.getElementById("importBtn").onclick = () => document.getElementById("importFile").click();
@@ -738,19 +789,20 @@
   }
 
   function renderEvents() {
-    const keyword = searchInput.value.trim().toLowerCase();
-
     const dayEvents = events
       .filter(e => e.date === selectedDate)
-      .filter(e => {
-        if (!keyword) return true;
-        const text = [
-          e.content, e.title, e.checkinDate, e.checkoutDate, e.place, e.placeSub, e.placeAddress, e.keyNumber,
-          e.company, e.staff, e.assignee, e.user, e.note
-        ].join(" ").toLowerCase();
-        return text.includes(keyword);
-      })
-      .sort((a, b) => (a.startTime || "").localeCompare(b.startTime || ""));
+      .sort((a, b) => {
+        const orderA = getPlaceSortIndex(a.place);
+        const orderB = getPlaceSortIndex(b.place);
+
+        if (orderA !== orderB) return orderA - orderB;
+
+        const timeA = a.startTime || "";
+        const timeB = b.startTime || "";
+        if (timeA !== timeB) return timeA.localeCompare(timeB);
+
+        return (a.endTime || "").localeCompare(b.endTime || "");
+      });
 
     selectedDateLabel.textContent = formatDateLabel(selectedDate);
     eventList.innerHTML = "";
@@ -814,6 +866,7 @@
     eventId.value = ev?.id || "";
     checkinInput.value = ev?.checkinDate || ev?.date || selectedDate;
     checkoutInput.value = ev?.checkoutDate || ev?.date || selectedDate;
+    updateDateDisplayLabels();
     startInput.value = ev?.startTime || "";
     endInput.value = ev?.endTime || "";
     placeInput.value = ev?.place || "";
@@ -883,27 +936,38 @@
       checkoutDate
     };
 
-    // 既存カードの編集時は、そのカード1件だけを更新する。
-    // 新規追加時だけ、チェックイン～チェックアウトの範囲に応じて自動生成する。
-    if (existingId) {
-      const ev = {
-        ...baseEvent,
-        id: existingId,
-        date: checkinDate,
-        content: contentInput.value
-      };
+    if (!baseEvent.place) {
+      alert("場所・物件を選択してください。");
+      return;
+    }
 
-      const index = events.findIndex(e => e.id === existingId);
-      if (index >= 0) events[index] = ev;
-      else events.push(ev);
+    const keepScrollLeft = dateStrip.scrollLeft;
 
-      selectedDate = ev.date;
-      current = new Date(ev.date + "T00:00:00");
+    // 編集中の元データを取得
+    const originalEvent = existingId ? events.find(e => e.id === existingId) : null;
+    const rangeChanged = originalEvent
+      ? (originalEvent.checkinDate || originalEvent.date || "") !== checkinDate ||
+        (originalEvent.checkoutDate || originalEvent.date || "") !== checkoutDate
+      : false;
+
+    // 新規追加、または編集でチェックイン/チェックアウト日が変わった場合は、
+    // 範囲内の日付へ自動コピーし、同じ日付+同じ場所のカードは上書きする。
+    if (!existingId || rangeChanged) {
+      const generated = createStayEvents(baseEvent);
+
+      // 編集で範囲変更した場合は、元のカード1件は削除してから再生成する
+      if (existingId) {
+        events = events.filter(e => e.id !== existingId);
+      }
+
+      upsertEventsByDateAndPlace(generated);
+
+      selectedDate = checkinDate;
+      current = new Date(checkinDate + "T00:00:00");
 
       saveEvents();
       closeSheet();
 
-      const keepScrollLeft = dateStrip.scrollLeft;
       renderDates(true);
       dateStrip.scrollLeft = keepScrollLeft;
       updateDateActiveStates();
@@ -912,22 +976,48 @@
       return;
     }
 
-    const generated = createStayEvents(baseEvent);
+    // 範囲変更なしの既存カード編集は、そのカード1件だけ更新。
+    // ただし同じ日付+同じ場所の別カードがあれば、重複しないよう上書き扱いにする。
+    const ev = {
+      ...baseEvent,
+      id: existingId,
+      date: checkinDate,
+      content: contentInput.value
+    };
 
-    events.push(...generated);
+    events = events.filter(e => {
+      if (e.id === existingId) return false;
+      return !(e.date === ev.date && e.place === ev.place);
+    });
+    events.push(ev);
 
-    selectedDate = checkinDate;
-    current = new Date(checkinDate + "T00:00:00");
+    selectedDate = ev.date;
+    current = new Date(ev.date + "T00:00:00");
 
     saveEvents();
     closeSheet();
 
-    const keepScrollLeft = dateStrip.scrollLeft;
     renderDates(true);
     dateStrip.scrollLeft = keepScrollLeft;
     updateDateActiveStates();
     renderEvents();
     updateMonthLabelByStripCenter();
+  }
+
+  function upsertEventsByDateAndPlace(newEvents) {
+    for (const newEvent of newEvents) {
+      const existingIndex = events.findIndex(e => e.date === newEvent.date && e.place === newEvent.place);
+
+      if (existingIndex >= 0) {
+        events[existingIndex] = {
+          ...events[existingIndex],
+          ...newEvent,
+          id: events[existingIndex].id || newEvent.id
+        };
+      } else {
+        events.push(newEvent);
+      }
+    }
   }
 
   function createStayEvents(baseEvent) {
@@ -986,6 +1076,14 @@
 
   function getPlaceItem(name) {
     return getPlaceItems().find(item => item.name === name);
+  }
+
+  function getPlaceSortIndex(placeName) {
+    const index = PLACE_SORT_ORDER.indexOf(placeName);
+    if (index >= 0) return index;
+
+    // 固定リストにない追加物件は下に回す
+    return 9999;
   }
 
   function renderPlaceOptions(selectedValue = "") {
@@ -1292,7 +1390,7 @@
   function exportBackup() {
     const data = {
       app: "Schedule Board",
-      version: 37,
+      version: 44,
       exportedAt: new Date().toISOString(),
       settings,
       events
@@ -1422,6 +1520,31 @@
     const m = String(date.getMonth() + 1).padStart(2, "0");
     const d = String(date.getDate()).padStart(2, "0");
     return `${y}-${m}-${d}`;
+  }
+
+  function openNativeDatePicker(input) {
+    if (typeof input.showPicker === "function") {
+      input.showPicker();
+    } else {
+      input.focus();
+      input.click();
+    }
+  }
+
+  function updateDateDisplayLabels() {
+    setDateDisplay(checkinDisplayBtn, checkinInput.value);
+    setDateDisplay(checkoutDisplayBtn, checkoutInput.value);
+  }
+
+  function setDateDisplay(button, dateStr) {
+    if (!dateStr) {
+      button.textContent = "日付を選択";
+      button.classList.add("empty");
+      return;
+    }
+
+    button.textContent = dateStr.replaceAll("-", "/");
+    button.classList.remove("empty");
   }
 
   function formatDateLabel(dateStr) {
