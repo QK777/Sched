@@ -3,16 +3,18 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Schedule Board</title>
-  <link rel="apple-touch-icon" sizes="180x180" href="./icon-180a.png">
-  <link rel="icon" type="image/png" sizes="192x192" href="./icon-192a.png">
-  <link rel="icon" type="image/png" sizes="512x512" href="./icon-512a.png">
+  <title>Cleaning Calendar</title>
+
+  <link rel="apple-touch-icon" sizes="180x180" href="./icon-180.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="./icon-192-android.png">
+  <link rel="icon" type="image/png" sizes="512x512" href="./icon-512-android.png">
   <link rel="manifest" href="./manifest.json">
   <meta name="theme-color" content="#0f1117">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-title" content="Schedule Board">
+  <meta name="apple-mobile-web-app-title" content="Cleaning Calendar">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
   <style>
     :root {
       --bg: #0f1117;
@@ -22,7 +24,10 @@
       --muted: #9ca3af;
       --border: #2d3340;
       --accent: #6aa6ff;
-      --event-red: #ff5b5b;
+      --cellw: 94px;
+      --leftw: 176px;
+      --headh: 52px;
+      --rowh: 78px;
     }
 
     * { box-sizing: border-box; }
@@ -32,24 +37,12 @@
       background: var(--bg);
       color: var(--text);
       font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      overflow: hidden;
     }
 
-    header {
-      position: sticky;
-      top: 0;
-      z-index: 10;
-      background: rgba(15, 17, 23, 0.96);
-      backdrop-filter: blur(12px);
-      border-bottom: 1px solid var(--border);
-      padding: 12px;
-    }
-
-    .month-row {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-      margin-bottom: 10px;
+    button, input, select, textarea {
+      font-family: inherit;
+      -webkit-tap-highlight-color: transparent;
     }
 
     button {
@@ -58,182 +51,307 @@
       padding: 10px 12px;
       background: var(--panel2);
       color: var(--text);
-      font-weight: 600;
+      font-weight: 700;
       cursor: pointer;
-      -webkit-tap-highlight-color: transparent;
     }
 
     button:active { transform: scale(0.98); }
 
-    .date-strip {
-      display: flex;
+    .app {
+      height: 100dvh;
+      display: grid;
+      grid-template-rows: auto 1fr;
+    }
+
+    header {
+      z-index: 30;
+      padding: 10px 10px 8px;
+      border-bottom: 1px solid var(--border);
+      background: rgba(15, 17, 23, 0.96);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
+
+    .month-row {
+      display: grid;
+      grid-template-columns: 44px 1fr 44px;
+      align-items: center;
       gap: 8px;
-      overflow-x: auto;
-      overflow-y: hidden;
-      padding-bottom: 4px;
-      scrollbar-width: none;
-      cursor: grab;
-      user-select: none;
-      -webkit-user-select: none;
-      -webkit-overflow-scrolling: touch;
-      touch-action: pan-x;
+      margin-bottom: 8px;
     }
 
-    .date-strip.dragging {
-      cursor: grabbing;
-    }
-
-    .date-strip::-webkit-scrollbar { display: none; }
-
-    .date-btn {
-      position: relative;
-      flex: 0 0 56px;
-      min-width: 56px;
-      padding: 8px 6px;
-      border-radius: 14px;
-      background: var(--panel);
-      border: 1px solid var(--border);
+    .month-title {
       text-align: center;
-      color: var(--muted);
-    }
-
-    .date-btn.has-events {
-      border: 2px solid var(--event-red);
-      box-shadow: 0 0 0 1px rgba(255, 91, 91, 0.15);
-    }
-
-    .date-btn.active {
-      background: var(--accent);
-      color: #06101f;
-      border-color: var(--accent);
-    }
-
-    .date-btn.active.has-events {
-      border: 2px solid var(--event-red);
-      box-shadow: inset 0 0 0 2px rgba(6, 16, 31, 0.35), 0 0 0 1px rgba(255, 91, 91, 0.5);
-    }
-
-    .date-btn .day {
+      font-weight: 850;
       font-size: 18px;
-      font-weight: 800;
-    }
-
-    .date-btn .week { font-size: 12px; }
-
-    main {
-      padding: 12px;
-      padding-bottom: 96px;
     }
 
     .top-actions {
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: 8px;
-      margin-bottom: 10px;
     }
 
     .top-actions button {
-      min-width: 0;
-      padding-left: 8px;
-      padding-right: 8px;
+      padding: 9px 4px;
+      font-size: 12px;
       white-space: nowrap;
     }
 
-    .section-title {
-      color: var(--muted);
-      font-size: 13px;
-      margin: 10px 0;
+    .calendar-scroll {
+      height: 100%;
+      overflow: auto;
+      -webkit-overflow-scrolling: touch;
+      position: relative;
+      cursor: default;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;
+      touch-action: pan-x pan-y;
+      overscroll-behavior: contain;
     }
 
-    .event-card {
-      background: var(--panel);
-      border: 1px solid var(--border);
-      border-left: 7px solid var(--card-color, #6aa6ff);
-      border-radius: 16px;
-      padding: 12px;
-      margin-bottom: 10px;
+    .calendar-scroll.dragging {
+      cursor: grabbing;
     }
 
-    .event-time {
-      font-size: 13px;
-      color: var(--muted);
-      margin-bottom: 4px;
+    .calendar-scroll * {
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-user-drag: none;
     }
 
-    .event-title {
-      font-size: 18px;
-      font-weight: 850;
-      margin-bottom: 8px;
-      line-height: 1.35;
+    .calendar-grid {
+      display: grid;
+      grid-template-columns: var(--leftw) repeat(var(--days), var(--cellw));
+      grid-template-rows: var(--headh) repeat(var(--rows), var(--rowh));
+      width: max-content;
+      min-width: 100%;
     }
 
-    .place-line {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px 8px;
-      align-items: center;
+    .corner,
+    .date-head,
+    .left-cell,
+    .cal-cell {
+      border-right: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
     }
 
-    .place-main { color: var(--text); }
-
-    .place-sub,
-    .place-address {
-      color: #d1d5db;
-      font-size: 14px;
-      font-weight: 650;
-    }
-
-    .place-address {
-      padding: 1px 7px;
-      border: 1px solid var(--border);
-      border-radius: 999px;
-      background: rgba(255,255,255,0.04);
-    }
-
-    .key-line {
-      display: inline-flex;
+    .corner {
+      position: sticky;
+      left: 0;
+      top: 0;
+      z-index: 25;
+      touch-action: pan-y;
+      background: rgba(17, 20, 29, 0.98);
+      display: grid;
+      grid-template-columns: 1fr auto;
       align-items: center;
       gap: 6px;
-      color: #f3f4f6;
-      font-size: 14px;
-      font-weight: 700;
-      margin-top: 2px;
-      margin-bottom: 2px;
-    }
-
-    .key-label {
+      padding: 6px 8px;
       color: var(--muted);
       font-size: 12px;
-      font-weight: 650;
+      font-weight: 800;
     }
 
-    .event-meta {
-      font-size: 13px;
+    .corner-add {
+      width: 30px;
+      height: 30px;
+      min-width: 30px;
+      padding: 0;
+      border-radius: 999px;
+      background: rgba(106,166,255,.18);
+      border: 1px solid rgba(106,166,255,.38);
+      color: var(--text);
+      font-size: 19px;
+      line-height: 1;
+      display: grid;
+      place-items: center;
+    }
+
+    .date-head {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      touch-action: pan-x;
+      background: rgba(17, 20, 29, 0.98);
+      display: grid;
+      place-items: center;
+      padding: 4px;
+      min-width: var(--cellw);
+    }
+
+    .date-head.today {
+      background: rgba(106, 166, 255, 0.16);
+    }
+
+    .date-num {
+      font-size: 15px;
+      font-weight: 900;
+      line-height: 1.1;
+    }
+
+    .date-week {
+      font-size: 11px;
       color: var(--muted);
-      line-height: 1.65;
+      line-height: 1.1;
+      margin-top: 4px;
+      text-align: center;
+    }
+
+    .date-head.sun .date-week { color: #ff9aa2; }
+    .date-head.sat .date-week { color: #8bbcff; }
+
+    .left-cell {
+      position: sticky;
+      left: 0;
+      z-index: 15;
+      touch-action: pan-y;
+      background: rgba(17, 20, 29, 0.98);
+      padding: 6px 8px 6px 10px;
+      overflow: hidden;
+      display: grid;
+      align-content: center;
+      gap: 3px;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    .left-cell.activity {
+      background: rgba(32, 36, 47, 0.98);
+    }
+
+    .left-cell.long-pressing {
+      outline: 2px solid rgba(106,166,255,.7);
+      outline-offset: -3px;
+    }
+
+    .item-name {
+      font-size: 11px;
+      font-weight: 850;
+      line-height: 1.25;
       overflow-wrap: anywhere;
     }
 
-    .fab {
-      position: fixed;
-      right: 16px;
-      bottom: 18px;
-      width: 64px;
-      height: 64px;
-      border-radius: 999px;
-      background: var(--accent);
-      color: #06101f;
-      font-size: 30px;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.35);
-      z-index: 15;
+    .item-sub {
+      font-size: 10px;
+      color: #d1d5db;
+      line-height: 1.25;
+      overflow-wrap: anywhere;
+    }
+
+    .item-address {
+      font-size: 12px;
+      color: var(--text);
+      font-weight: 800;
+      line-height: 1.15;
+    }
+
+    .item-key {
+      font-size: 10px;
+      color: var(--muted);
+      line-height: 1.15;
+    }
+
+    .cal-cell {
+      min-width: var(--cellw);
+      height: var(--rowh);
+      padding: 4px;
+      touch-action: pan-x;
+      background: rgba(255,255,255,0.018);
+      position: relative;
+      cursor: default;
+      touch-action: manipulation;
+    }
+
+    .cal-cell:nth-child(odd) {
+      background: rgba(255,255,255,0.026);
+    }
+
+    .cal-cell.has-event {
+      background: rgba(106, 166, 255, 0.05);
+    }
+
+    .mini-card {
+      pointer-events: none;
+      width: 100%;
+      height: 100%;
+      border-radius: 9px;
+      border: 1px solid rgba(255,255,255,0.08);
+      background: var(--card-color, rgba(106,166,255,.28));
+      padding: 4px;
+      overflow: hidden;
+      color: #f8fafc;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.1);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      gap: 3px;
+    }
+
+    .mini-content {
+      font-size: 18px;
+      font-weight: 950;
+      line-height: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 100%;
+    }
+
+    .mini-line {
+      width: 100%;
+      color: rgba(255,255,255,.9);
+      font-size: 11px;
+      font-weight: 750;
+      line-height: 1.15;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .mini-placeholder {
+      font-size: 14px;
+      color: rgba(255,255,255,.75);
+    }
+
+    .activity-card {
+      pointer-events: none;
+      width: 100%;
+      height: 100%;
+      border-radius: 8px;
+      background: rgba(255,255,255,0.04);
+      display: grid;
+      place-items: center;
+      padding: 4px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+      text-align: center;
+      white-space: nowrap;
+      line-height: 1.12;
+    }
+
+    .activity-card.has-time {
+      color: var(--text);
+      background: rgba(250, 204, 21, 0.16);
+      border: 1px solid rgba(250, 204, 21, 0.25);
+    }
+
+    .activity-tilde {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1;
     }
 
     .sheet-backdrop {
       position: fixed;
       inset: 0;
-      background: rgba(0,0,0,0.55);
+      z-index: 50;
+      background: rgba(0,0,0,.56);
       display: none;
-      z-index: 20;
     }
 
     .sheet-backdrop.show { display: block; }
@@ -243,15 +361,14 @@
       left: 0;
       right: 0;
       bottom: 0;
-      width: 100%;
-      max-width: 100vw;
-      max-height: 92vh;
-      overflow-y: auto;
-      overflow-x: hidden;
-      background: var(--panel);
-      border-radius: 22px 22px 0 0;
+      max-height: 92dvh;
+      overflow: auto;
       padding: 16px;
-      border-top: 1px solid var(--border);
+      border-radius: 22px 22px 0 0;
+      border-top: 1px solid rgba(255,255,255,.12);
+      background: rgba(23, 26, 34, .96);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
     }
 
     .sheet-head {
@@ -259,7 +376,7 @@
       align-items: center;
       justify-content: space-between;
       gap: 12px;
-      margin: 0 0 12px;
+      margin-bottom: 12px;
     }
 
     .sheet h2 {
@@ -277,24 +394,16 @@
       background: rgba(255,255,255,0.08);
       color: var(--text);
       font-size: 22px;
-      font-weight: 700;
-      line-height: 1;
       display: grid;
       place-items: center;
       backdrop-filter: blur(12px);
       -webkit-backdrop-filter: blur(12px);
-      box-shadow: inset 0 1px 0 rgba(255,255,255,0.12), 0 8px 24px rgba(0,0,0,0.22);
-    }
-
-    .sheet-close:active {
-      transform: scale(0.94);
-      background: rgba(255,255,255,0.14);
     }
 
     label {
       display: block;
-      font-size: 12px;
       color: var(--muted);
+      font-size: 12px;
       margin: 10px 0 4px;
     }
 
@@ -302,195 +411,34 @@
       width: 100%;
       max-width: 100%;
       border: 1px solid var(--border);
-      background: var(--bg);
+      background: #10131b;
       color: var(--text);
       border-radius: 12px;
       padding: 11px;
       font-size: 16px;
-      min-width: 0;
-    }
-
-    input[type="date"] {
-      -webkit-appearance: none;
-      appearance: none;
-      display: block;
-      min-width: 0;
     }
 
     textarea {
-      min-height: 76px;
+      min-height: 72px;
       resize: vertical;
-    }
-
-    .time-after-date {
-      margin-top: 12px;
-    }
-
-    .time-row {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-      gap: 6px;
-      width: 100%;
-      align-items: center;
-    }
-
-    .time-row > div {
-      min-width: 0;
-      display: block;
-    }
-
-    .time-row label {
-      display: block;
-      margin: 0 0 4px;
-      font-size: 12px;
-      white-space: nowrap;
-    }
-
-    .time-row input[type="time"] {
-      width: 100%;
-      max-width: 100%;
-      min-width: 0;
-      height: 38px;
-      line-height: 1;
-      font-size: 14px;
-      padding: 6px 4px;
-      letter-spacing: -0.06em;
-      -webkit-appearance: none;
-      appearance: none;
-    }
-
-    .time-row input[type="time"]::-webkit-calendar-picker-indicator {
-      margin-left: -6px;
-      padding: 0;
-      width: 14px;
-      height: 14px;
-    }
-
-    .date-range-row {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-      gap: 8px;
-      width: 100%;
-    }
-
-    .date-range-row > div {
-      min-width: 0;
-    }
-
-    .date-label-row {
-      margin: 10px 0 4px;
-    }
-
-    .date-label-row label {
-      margin: 0;
-    }
-
-    .date-picker-wrap {
-      position: relative;
-      width: 100%;
-    }
-
-    .date-display {
-      width: 100%;
-      height: 42px;
-      border: 1px solid var(--border);
-      background: var(--bg);
-      color: var(--text);
-      border-radius: 12px;
-      padding: 0 10px;
-      font-size: 15px;
-      font-weight: 500;
-      text-align: left;
-    }
-
-    .date-display.empty {
-      color: var(--muted);
-    }
-
-    .date-input {
-      position: absolute;
-      inset: 0;
-      width: 100%;
-      height: 42px;
-      opacity: 0;
-      pointer-events: none;
-    }
-
-    @media (max-width: 340px) {
-      .time-row {
-        gap: 4px;
-      }
-
-      .time-row label {
-        font-size: 11px;
-      }
-
-      .time-row input[type="time"] {
-        font-size: 13px;
-        padding-left: 3px;
-        padding-right: 2px;
-      }
     }
 
     .form-row {
       display: grid;
-      grid-template-columns: minmax(0, 1fr) minmax(0, 0.75fr);
+      grid-template-columns: 1fr 0.72fr;
       gap: 8px;
     }
 
-    .place-detail-row {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) minmax(0, 0.8fr);
-      gap: 8px;
-    }
-
-    .select-add-row {
-      display: grid;
-      grid-template-columns: 1fr auto;
-      gap: 8px;
-      align-items: end;
-    }
-
-    .add-small {
-      white-space: nowrap;
-      height: 46px;
-      padding: 0 12px;
-    }
-
-    .actions {
+    .time-row {
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 8px;
-      margin-top: 14px;
-    }
-
-    .save {
-      background: var(--accent);
-      color: #06101f;
-    }
-
-    .delete {
-      background: #3a1d22;
-      color: #ff9aa2;
-    }
-
-    .empty {
-      color: var(--muted);
-      text-align: center;
-      margin-top: 40px;
-    }
-
-    .backup-row {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 8px;
-      margin-top: 10px;
     }
 
     .palette {
       display: flex;
       gap: 10px;
-      padding: 6px 0 2px;
+      padding: 4px 0 2px;
       overflow-x: auto;
       scrollbar-width: none;
     }
@@ -505,910 +453,918 @@
       border: 3px solid transparent;
       padding: 0;
       background: var(--dot);
-      box-shadow: 0 0 0 1px rgba(255,255,255,0.18);
+      box-shadow: 0 0 0 1px rgba(255,255,255,.18);
     }
 
     .color-dot.selected {
       border-color: #fff;
-      box-shadow: 0 0 0 3px rgba(255,255,255,0.15);
+    }
+
+    .actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 14px;
+    }
+
+    .delete {
+      background: #3a1d22;
+      color: #ff9aa2;
+    }
+
+    .save {
+      background: var(--accent);
+      color: #06101f;
     }
 
     .hint {
-      color: var(--muted);
       font-size: 12px;
-      line-height: 1.5;
-      margin-top: 6px;
+      color: var(--muted);
+      line-height: 1.55;
+      margin-top: 8px;
     }
 
-    @media (min-width: 720px) {
+    @media (min-width: 820px) {
+      :root {
+        --cellw: 104px;
+        --leftw: 220px;
+        --rowh: 82px;
+      }
+
       body {
-        max-width: 720px;
+        max-width: 1100px;
         margin: 0 auto;
         border-left: 1px solid var(--border);
         border-right: 1px solid var(--border);
-        min-height: 100vh;
       }
     }
   </style>
 </head>
 <body>
+<div class="app">
+  <header>
+    <div class="month-row">
+      <button id="prevMonthBtn">＜</button>
+      <div class="month-title" id="monthTitle">2026年5月</div>
+      <button id="nextMonthBtn">＞</button>
+    </div>
+    <div class="top-actions">
+      <button id="todayBtn">今日</button>
+      <button id="exportBtn">バックアップ</button>
+      <button id="importBtn">復元</button>
+    </div>
+    <input id="importFile" type="file" accept="application/json" hidden>
+  </header>
 
-<header>
-  <div class="month-row">
-    <button id="prevMonth">＜</button>
-    <strong id="monthLabel">2026年5月</strong>
-    <button id="nextMonth">＞</button>
-  </div>
+  <main class="calendar-scroll" id="calendarScroll">
+    <div class="calendar-grid" id="calendarGrid"></div>
 
-  <div class="date-strip" id="dateStrip"></div>
-</header>
+  </main>
+</div>
 
-<main>
-  <div class="top-actions">
-    <button id="todayBtn">今日</button>
-    <button id="exportBtn">バックアップ</button>
-    <button id="importBtn">復元</button>
-  </div>
-  <input id="importFile" type="file" accept="application/json" hidden>
-
-  <div class="section-title" id="selectedDateLabel"></div>
-  <div id="eventList"></div>
-</main>
-
-<button class="fab" id="addBtn">＋</button>
-
-<div class="sheet-backdrop" id="sheetBackdrop">
+<div class="sheet-backdrop" id="eventSheetBackdrop">
   <div class="sheet">
     <div class="sheet-head">
-      <h2 id="sheetTitle">予定を追加</h2>
-      <button class="sheet-close" id="sheetCloseBtn" type="button" aria-label="閉じる">×</button>
+      <h2 id="eventSheetTitle">予定を編集</h2>
+      <button class="sheet-close" id="eventCloseBtn" type="button">×</button>
     </div>
 
-    <input type="hidden" id="eventId">
+    <input type="hidden" id="editingDate">
+    <input type="hidden" id="editingItemId">
 
     <label>カード枠の色</label>
     <div class="palette" id="colorPalette"></div>
 
-    <div class="date-range-row">
-      <div>
-        <div class="date-label-row">
-          <label>チェックイン</label>
-        </div>
-        <div class="date-picker-wrap">
-          <button class="date-display empty" id="checkinDisplayBtn" type="button">日付を選択</button>
-          <input type="date" id="checkinInput" class="date-input">
-        </div>
-      </div>
-      <div>
-        <div class="date-label-row">
-          <label>チェックアウト</label>
-        </div>
-        <div class="date-picker-wrap">
-          <button class="date-display empty" id="checkoutDisplayBtn" type="button">日付を選択</button>
-          <input type="date" id="checkoutInput" class="date-input">
-        </div>
-      </div>
-    </div>
-
-    <div class="time-row time-after-date">
-      <div>
-        <label>時間①</label>
-        <input type="time" id="startInput">
-      </div>
-      <div>
-        <label>時間②</label>
-        <input type="time" id="endInput">
-      </div>
-    </div>
-
-    <label>場所・物件</label>
-    <div class="select-add-row">
-      <select id="placeInput"></select>
-      <button class="add-small" id="addPlaceBtn" type="button">追加</button>
-    </div>
-    <div class="hint">場所に紐づく建物名・番号・鍵番号は、トップページのカードにだけ自動表示します。追加ボタンは通常タップで新規追加、長押しで選択中の項目を編集できます。編集時に最初の項目名を空にすると削除します。</div>
-
-    <label>会社名</label>
-    <div class="select-add-row">
-      <select id="companyInput"></select>
-      <button class="add-small" id="addCompanyBtn" type="button">追加</button>
-    </div>
-
     <div class="form-row">
       <div>
-        <label>利用者</label>
-        <input id="userInput" placeholder="例：山田">
+        <label>人数</label>
+        <select id="eventPeopleInput"></select>
       </div>
       <div>
-        <label>人数</label>
-        <select id="peopleInput"></select>
+        <label>利用者</label>
+        <input id="eventUserInput" placeholder="例：山田">
       </div>
-    </div>
-
-    <label>内容</label>
-    <div class="select-add-row">
-      <select id="contentInput"></select>
-      <button class="add-small" id="addContentBtn" type="button">追加</button>
     </div>
 
     <label>担当者</label>
-    <div class="select-add-row">
-      <select id="staffInput"></select>
-      <button class="add-small" id="addStaffBtn" type="button">追加</button>
-    </div>
+    <input id="eventStaffInput" placeholder="例：田中">
 
     <label>メモ</label>
-    <textarea id="noteInput" placeholder="備考を入力"></textarea>
+    <textarea id="eventNoteInput" placeholder="備考"></textarea>
 
     <div class="actions">
-      <button class="delete" id="deleteBtn">削除</button>
-      <button class="save" id="saveBtn">保存</button>
+      <button class="delete" id="eventDeleteBtn">削除</button>
+      <button class="save" id="eventSaveBtn">保存</button>
+    </div>
+  </div>
+</div>
+
+<div class="sheet-backdrop" id="itemSheetBackdrop">
+  <div class="sheet">
+    <div class="sheet-head">
+      <h2 id="itemSheetTitle">項目を編集</h2>
+      <button class="sheet-close" id="itemCloseBtn" type="button">×</button>
+    </div>
+
+    <input type="hidden" id="editingItemSheetId">
+
+    <label>場所・物件</label>
+    <input id="itemNameInput" placeholder="例：レイクウエスト 4-711">
+
+    <label>建物名・屋号など</label>
+    <input id="itemSubInput" placeholder="例：ウエストヒルズ邸">
+
+    <label>住所・番号など</label>
+    <input id="itemAddressInput" placeholder="例：1049-3">
+
+    <label>鍵番号</label>
+    <input id="itemKeyInput" placeholder="後で追加可能">
+
+    <div class="hint">左側の項目は長押しで編集できます。項目名を空にして保存すると削除します。</div>
+
+    <div class="actions">
+      <button class="delete" id="itemDeleteBtn">削除</button>
+      <button class="save" id="itemSaveBtn">保存</button>
+    </div>
+  </div>
+</div>
+
+<div class="sheet-backdrop" id="activitySheetBackdrop">
+  <div class="sheet">
+    <div class="sheet-head">
+      <h2>活動時間</h2>
+      <button class="sheet-close" id="activityCloseBtn" type="button">×</button>
+    </div>
+
+    <input type="hidden" id="activityDateInput">
+
+    <label>日付</label>
+    <input id="activityInfoInput" readonly>
+
+    <div class="time-row">
+      <div>
+        <label>開始時間</label>
+        <input type="time" id="activityStartInput">
+      </div>
+      <div>
+        <label>終了時間</label>
+        <input type="time" id="activityEndInput">
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="delete" id="activityDeleteBtn">削除</button>
+      <button class="save" id="activitySaveBtn">保存</button>
     </div>
   </div>
 </div>
 
 <script>
-  const STORAGE_KEY = "mobile_schedule_events";
-  const SETTINGS_KEY = "mobile_schedule_settings";
+  const STORAGE_KEY = "cleaning_calendar_grid_v1";
 
-  const DEFAULT_COMPANIES = ["AirBnB", "オーナー"];
-  const DEFAULT_CONTENTS = [
+  const COLORS = [
+    "#6aa6ff55",
+    "#ff5b5b55",
+    "#ffd16666",
+    "#7bd88f55",
+    "#c084fc55",
+    "#ff9f4355",
+    "#4dd4ac55"
+  ];
+
+  const CONTENTS = [
     "日帰り",
     "連泊（チェックイン）",
     "連泊（清掃）",
     "連泊（チェックアウト）"
   ];
-  const DEFAULT_STAFFS = [];
 
-  const CARD_COLORS = [
-    "#6aa6ff",
-    "#ff5b5b",
-    "#ffd166",
-    "#7bd88f",
-    "#c084fc",
-    "#ff9f43",
-    "#4dd4ac"
+  const DEFAULT_ITEMS = [
+    { id: "activity", type: "activity", name: "活動時間", sub: "", address: "", key: "" },
+    { id: "place_lakewest_4711", type: "place", name: "レイクウエスト 4-711", sub: "ウエストヒルズ邸", address: "1049-3", key: "" },
+    { id: "place_kohan_sauna_4656", type: "place", name: "湖辺のくつろぎ、時々サウナ (4-656)", sub: "由井邸", address: "1039-7", key: "" },
+    { id: "place_lake_terrace_6904", type: "place", name: "LAKE Terrace 6-904", sub: "早坂邸", address: "1432-179", key: "" },
+    { id: "place_takashima_best_so", type: "place", name: "TAKASHIMA BEST SO (4-625/626)", sub: "加藤邸", address: "1039-90", key: "" },
+    { id: "place_fusha_biwako_1011", type: "place", name: "風車村 びわ湖の家 1011 (4-657)", sub: "伊藤邸", address: "1039-96", key: "" },
+    { id: "place_koco_1220", type: "place", name: "湖Co (12-20)", sub: "高橋邸", address: "1431-29", key: "" },
+    { id: "place_lake_terrace_4661", type: "place", name: "LAKE Terrace 4-661", sub: "堂阪邸", address: "1039-74", key: "" }
   ];
 
-  const DEFAULT_PLACE_ITEMS = [
-    { name: "レイクウエスト 4-711", sub: "ウエストヒルズ邸", address: "1049-3", key: "" },
-    { name: "湖辺のくつろぎ、時々サウナ (4-656)", sub: "由井邸", address: "1039-7", key: "" },
-    { name: "LAKE Terrace 6-904", sub: "早坂邸", address: "1432-179", key: "" },
-    { name: "TAKASHIMA BEST SO (4-625/626)", sub: "加藤邸", address: "1039-90", key: "" },
-    { name: "風車村 びわ湖の家 1011 (4-657)", sub: "伊藤邸", address: "1039-96", key: "" },
-    { name: "湖Co (12-20)", sub: "高橋邸", address: "1431-29", key: "" },
-    { name: "LAKE Terrace 4-661", sub: "堂阪邸", address: "1039-74", key: "" }
-  ];
-
-  const PLACE_SORT_ORDER = [
-    "レイクウエスト 4-711",
-    "湖辺のくつろぎ、時々サウナ (4-656)",
-    "LAKE Terrace 6-904",
-    "TAKASHIMA BEST SO (4-625/626)",
-    "風車村 びわ湖の家 1011 (4-657)",
-    "湖Co (12-20)",
-    "LAKE Terrace 4-661"
-  ];
-
+  let state = loadState();
   let current = new Date();
-  let selectedDate = toDateString(new Date());
-  let selectedColor = CARD_COLORS[0];
-  let settings = loadSettings();
-  let events = loadEvents();
+  let selectedColor = COLORS[0];
 
-  let renderedStartMonth = null;
-  let renderedEndMonth = null;
-  let isExtendingDateStrip = false;
+  const calendarScroll = document.getElementById("calendarScroll");
+  const calendarGrid = document.getElementById("calendarGrid");
+  const monthTitle = document.getElementById("monthTitle");
 
-  const dateStrip = document.getElementById("dateStrip");
-  const monthLabel = document.getElementById("monthLabel");
-  const selectedDateLabel = document.getElementById("selectedDateLabel");
-  const eventList = document.getElementById("eventList");
+  const eventSheetBackdrop = document.getElementById("eventSheetBackdrop");
+  const itemSheetBackdrop = document.getElementById("itemSheetBackdrop");
+  const activitySheetBackdrop = document.getElementById("activitySheetBackdrop");
 
-  const sheetBackdrop = document.getElementById("sheetBackdrop");
-  const sheetTitle = document.getElementById("sheetTitle");
-
-  const eventId = document.getElementById("eventId");
+  const editingDate = document.getElementById("editingDate");
+  const editingItemId = document.getElementById("editingItemId");
+  const eventUserInput = document.getElementById("eventUserInput");
+  const eventPeopleInput = document.getElementById("eventPeopleInput");
+  const eventStaffInput = document.getElementById("eventStaffInput");
+  const eventNoteInput = document.getElementById("eventNoteInput");
   const colorPalette = document.getElementById("colorPalette");
-  const checkinInput = document.getElementById("checkinInput");
-  const checkoutInput = document.getElementById("checkoutInput");
-  const checkinDisplayBtn = document.getElementById("checkinDisplayBtn");
-  const checkoutDisplayBtn = document.getElementById("checkoutDisplayBtn");
-  const startInput = document.getElementById("startInput");
-  const endInput = document.getElementById("endInput");
-  const placeInput = document.getElementById("placeInput");
-  const companyInput = document.getElementById("companyInput");
-  const staffInput = document.getElementById("staffInput");
-  const userInput = document.getElementById("userInput");
-  const peopleInput = document.getElementById("peopleInput");
-  const contentInput = document.getElementById("contentInput");
-  const noteInput = document.getElementById("noteInput");
 
-  document.getElementById("prevMonth").onclick = () => {
+  const editingItemSheetId = document.getElementById("editingItemSheetId");
+  const itemNameInput = document.getElementById("itemNameInput");
+  const itemSubInput = document.getElementById("itemSubInput");
+  const itemAddressInput = document.getElementById("itemAddressInput");
+  const itemKeyInput = document.getElementById("itemKeyInput");
+
+  const activityDateInput = document.getElementById("activityDateInput");
+  const activityInfoInput = document.getElementById("activityInfoInput");
+  const activityStartInput = document.getElementById("activityStartInput");
+  const activityEndInput = document.getElementById("activityEndInput");
+
+  document.getElementById("prevMonthBtn").onclick = () => {
     current.setMonth(current.getMonth() - 1);
-    selectedDate = toDateString(new Date(current.getFullYear(), current.getMonth(), 1));
-    resetDateWindowAroundCurrent();
-    render();
+    renderCalendar(true);
   };
 
-  document.getElementById("nextMonth").onclick = () => {
+  document.getElementById("nextMonthBtn").onclick = () => {
     current.setMonth(current.getMonth() + 1);
-    selectedDate = toDateString(new Date(current.getFullYear(), current.getMonth(), 1));
-    resetDateWindowAroundCurrent();
-    render();
+    renderCalendar(true);
   };
 
   document.getElementById("todayBtn").onclick = () => {
     current = new Date();
-    selectedDate = toDateString(new Date());
-    resetDateWindowAroundCurrent();
-    render();
-    scrollActiveDateIntoView();
+    renderCalendar(false);
+
+    requestAnimationFrame(() => {
+      scrollToDate(toDateString(new Date()));
+    });
   };
-
-  document.getElementById("addBtn").onclick = () => openSheet();
-
-  checkinInput.addEventListener("change", updateDateDisplayLabels);
-  checkoutInput.addEventListener("change", updateDateDisplayLabels);
-
-  checkinDisplayBtn.onclick = () => openNativeDatePicker(checkinInput);
-  checkoutDisplayBtn.onclick = () => openNativeDatePicker(checkoutInput);
-
-  setupAddDeleteButton("addCompanyBtn", "companies", "会社名を追加", companyInput, renderCompanyOptions);
-  setupAddDeleteButton("addStaffBtn", "staffs", "担当者を追加", staffInput, renderStaffOptions);
-  setupAddDeleteButton("addContentBtn", "contents", "内容を追加", contentInput, renderContentOptions);
-  setupPlaceAddDeleteButton();
-
-  sheetBackdrop.addEventListener("click", e => {
-    if (e.target === sheetBackdrop) closeSheet();
-  });
-
-  document.getElementById("saveBtn").onclick = saveEvent;
-  document.getElementById("deleteBtn").onclick = deleteEvent;
-  document.getElementById("sheetCloseBtn").onclick = closeSheet;
 
   document.getElementById("exportBtn").onclick = exportBackup;
   document.getElementById("importBtn").onclick = () => document.getElementById("importFile").click();
   document.getElementById("importFile").onchange = importBackup;
 
-  function render() {
-    renderDates();
-    renderEvents();
-  }
 
-  function renderDates(keepScroll = false) {
-    const previousScrollLeft = dateStrip.scrollLeft;
 
-    // 初回は「前月・当月・翌月」の3か月分を描画。
-    // 端に近づいたら setupDateStripDragScroll 側で3か月ずつ追加する。
-    if (!renderedStartMonth || !renderedEndMonth) {
-      renderedStartMonth = monthStart(addMonths(current, -1));
-      renderedEndMonth = monthStart(addMonths(current, 1));
-    }
-
-    rebuildDateStrip();
-
-    if (keepScroll) {
-      dateStrip.scrollLeft = previousScrollLeft;
-    } else {
-      scrollCurrentMonthStartIntoView();
-    }
-
-    updateMonthLabelByStripCenter();
-  }
-
-  function renderEvents() {
-    const dayEvents = events
-      .filter(e => e.date === selectedDate)
-      .sort((a, b) => {
-        const orderA = getPlaceSortIndex(a.place);
-        const orderB = getPlaceSortIndex(b.place);
-
-        if (orderA !== orderB) return orderA - orderB;
-
-        const timeA = a.startTime || "";
-        const timeB = b.startTime || "";
-        if (timeA !== timeB) return timeA.localeCompare(timeB);
-
-        return (a.endTime || "").localeCompare(b.endTime || "");
-      });
-
-    selectedDateLabel.textContent = formatDateLabel(selectedDate);
-    eventList.innerHTML = "";
-
-    if (dayEvents.length === 0) {
-      eventList.innerHTML = `<div class="empty">この日の予定はありません</div>`;
-      return;
-    }
-
-    for (const ev of dayEvents) {
-      const company = ev.company || ev.assignee || "-";
-      const staff = ev.staff || "-";
-      const content = ev.content || ev.title || "-";
-      const placeItem = getPlaceItem(ev.place) || {};
-      const displayPlaceSub = placeItem.sub || ev.placeSub || "";
-      const displayPlaceAddress = placeItem.address || ev.placeAddress || "";
-      const displayKeyNumber = placeItem.key || ev.keyNumber || "";
-      const card = document.createElement("div");
-      card.className = "event-card";
-      card.style.setProperty("--card-color", ev.color || CARD_COLORS[0]);
-      const timeParts = [];
-      if (ev.startTime) timeParts.push(`時間①：${escapeHtml(ev.startTime)}`);
-      if (ev.endTime) timeParts.push(`時間②：${escapeHtml(ev.endTime)}`);
-      const timeLine = timeParts.length
-        ? `<div class="event-time">${timeParts.join("　")}</div>`
-        : "";
-
-      card.innerHTML = `
-        <div class="event-title">
-          <div class="place-line">
-            <span class="place-main">${escapeHtml(ev.place || "場所未設定")}</span>
-            ${displayPlaceSub ? `<span class="place-sub">${escapeHtml(displayPlaceSub)}</span>` : ""}
-            ${displayPlaceAddress ? `<span class="place-address">${escapeHtml(displayPlaceAddress)}</span>` : ""}
-          </div>
-        </div>
-        ${displayKeyNumber ? `<div class="key-line"><span class="key-label">鍵</span>${escapeHtml(displayKeyNumber)}</div>` : ""}
-        ${timeLine}
-        <div class="event-meta">
-          内容：${escapeHtml(content)}${staff && staff !== "-" ? " / " + escapeHtml(staff) : ""}<br>
-          ${escapeHtml(company)} / ${escapeHtml(formatUserName(ev.user) || "-")}${ev.people ? " / " + ev.people + "名" : ""}<br>
-          ${ev.note ? "メモ：" + escapeHtml(ev.note) : ""}
-        </div>
-      `;
-      card.onclick = () => openSheet(ev);
-      eventList.appendChild(card);
-    }
-  }
-
-  function openSheet(ev = null) {
-    sheetTitle.textContent = ev ? "予定を編集" : "予定を追加";
-
-    selectedColor = ev?.color || CARD_COLORS[0];
-    renderColorPalette();
-
-    renderPlaceOptions(ev?.place || "");
-    renderCompanyOptions(ev?.company || ev?.assignee || "");
-    renderStaffOptions(ev?.staff || "");
-    renderContentOptions(ev?.content || ev?.title || "");
-    renderPeopleOptions(ev?.people || "");
-
-    eventId.value = ev?.id || "";
-    checkinInput.value = ev?.checkinDate || ev?.date || selectedDate;
-    checkoutInput.value = ev?.checkoutDate || ev?.date || selectedDate;
-    updateDateDisplayLabels();
-    startInput.value = ev?.startTime || "";
-    endInput.value = ev?.endTime || "";
-    placeInput.value = ev?.place || "";
-
-    companyInput.value = ev?.company || ev?.assignee || "";
-    staffInput.value = ev?.staff || "";
-    userInput.value = removeSama(ev?.user || "");
-    peopleInput.value = ev?.people || "";
-    contentInput.value = ev?.content || ev?.title || "";
-    noteInput.value = ev?.note || "";
-
-    document.getElementById("deleteBtn").style.visibility = ev ? "visible" : "hidden";
-    sheetBackdrop.classList.add("show");
-  }
-
-  function renderColorPalette() {
-    colorPalette.innerHTML = "";
-    for (const color of CARD_COLORS) {
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.className = "color-dot" + (color === selectedColor ? " selected" : "");
-      btn.style.setProperty("--dot", color);
-      btn.setAttribute("aria-label", color);
-      btn.onclick = () => {
-        selectedColor = color;
-        renderColorPalette();
-      };
-      colorPalette.appendChild(btn);
-    }
-  }
-
-  function closeSheet() {
-    sheetBackdrop.classList.remove("show");
-  }
-
-  function saveEvent() {
-    const checkinDate = checkinInput.value;
-    const checkoutDate = checkoutInput.value || checkinDate;
-
-    if (!checkinDate) {
-      alert("チェックイン日を入力してください。");
-      return;
-    }
-
-    if (checkoutDate < checkinDate) {
-      alert("チェックアウト日はチェックイン日以降にしてください。");
-      return;
-    }
-
-    const selectedPlaceItem = getPlaceItem(placeInput.value) || {};
-    const existingId = eventId.value;
-
-    const baseEvent = {
-      startTime: startInput.value,
-      endTime: endInput.value,
-      place: placeInput.value,
-      placeSub: selectedPlaceItem.sub || "",
-      placeAddress: selectedPlaceItem.address || "",
-      keyNumber: selectedPlaceItem.key || "",
-      company: companyInput.value,
-      staff: staffInput.value,
-      user: formatUserName(userInput.value.trim()),
-      people: peopleInput.value,
-      color: selectedColor,
-      note: noteInput.value.trim(),
-      checkinDate,
-      checkoutDate
-    };
-
-    if (!baseEvent.place) {
-      alert("場所・物件を選択してください。");
-      return;
-    }
-
-    const keepScrollLeft = dateStrip.scrollLeft;
-
-    // 編集中の元データを取得
-    const originalEvent = existingId ? events.find(e => e.id === existingId) : null;
-    const rangeChanged = originalEvent
-      ? (originalEvent.checkinDate || originalEvent.date || "") !== checkinDate ||
-        (originalEvent.checkoutDate || originalEvent.date || "") !== checkoutDate
-      : false;
-
-    // 新規追加、または編集でチェックイン/チェックアウト日が変わった場合は、
-    // 範囲内の日付へ自動コピーし、同じ日付+同じ場所のカードは上書きする。
-    if (!existingId || rangeChanged) {
-      const generated = createStayEvents(baseEvent);
-
-      // 編集で範囲変更した場合は、元のカード1件は削除してから再生成する
-      if (existingId) {
-        events = events.filter(e => e.id !== existingId);
-      }
-
-      upsertEventsByDateAndPlace(generated);
-
-      selectedDate = checkinDate;
-      current = new Date(checkinDate + "T00:00:00");
-
-      saveEvents();
-      closeSheet();
-
-      renderDates(true);
-      dateStrip.scrollLeft = keepScrollLeft;
-      updateDateActiveStates();
-      renderEvents();
-      updateMonthLabelByStripCenter();
-      return;
-    }
-
-    // 範囲変更なしの既存カード編集は、そのカード1件だけ更新。
-    // ただし同じ日付+同じ場所の別カードがあれば、重複しないよう上書き扱いにする。
-    const ev = {
-      ...baseEvent,
-      id: existingId,
-      date: checkinDate,
-      content: contentInput.value
-    };
-
-    events = events.filter(e => {
-      if (e.id === existingId) return false;
-      return !(e.date === ev.date && e.place === ev.place);
-    });
-    events.push(ev);
-
-    selectedDate = ev.date;
-    current = new Date(ev.date + "T00:00:00");
-
-    saveEvents();
-    closeSheet();
-
-    renderDates(true);
-    dateStrip.scrollLeft = keepScrollLeft;
-    updateDateActiveStates();
-    renderEvents();
-    updateMonthLabelByStripCenter();
-  }
-
-  function upsertEventsByDateAndPlace(newEvents) {
-    for (const newEvent of newEvents) {
-      const existingIndex = events.findIndex(e => e.date === newEvent.date && e.place === newEvent.place);
-
-      if (existingIndex >= 0) {
-        events[existingIndex] = {
-          ...events[existingIndex],
-          ...newEvent,
-          id: events[existingIndex].id || newEvent.id
-        };
-      } else {
-        events.push(newEvent);
-      }
-    }
-  }
-
-  function createStayEvents(baseEvent) {
-    const dates = enumerateDates(baseEvent.checkinDate, baseEvent.checkoutDate);
-
-    return dates.map((dateStr, index) => {
-      let content;
-
-      if (dates.length === 1) {
-        content = "日帰り";
-      } else if (index === 0) {
-        content = "連泊（チェックイン）";
-      } else if (index === dates.length - 1) {
-        content = "連泊（チェックアウト）";
-      } else {
-        content = "連泊（清掃）";
-      }
-
-      return {
-        ...baseEvent,
-        id: makeId(),
-        date: dateStr,
-        content
-      };
-    });
-  }
-
-  function enumerateDates(startDate, endDate) {
-    const result = [];
-    const d = new Date(startDate + "T00:00:00");
-    const end = new Date(endDate + "T00:00:00");
-
-    while (d <= end) {
-      result.push(toDateString(d));
-      d.setDate(d.getDate() + 1);
-    }
-
-    return result;
-  }
-
-  function deleteEvent() {
-    const id = eventId.value;
-    if (!id) return;
-
-    if (!confirm("この予定を削除しますか？")) return;
-
-    events = events.filter(e => e.id !== id);
-    saveEvents();
-    closeSheet();
-    render();
-  }
-
-  function getPlaceItems() {
-    return settings.placeItems;
-  }
-
-  function getPlaceItem(name) {
-    return getPlaceItems().find(item => item.name === name);
-  }
-
-  function getPlaceSortIndex(placeName) {
-    const index = PLACE_SORT_ORDER.indexOf(placeName);
-    if (index >= 0) return index;
-
-    // 固定リストにない追加物件は下に回す
-    return 9999;
-  }
-
-  function renderPlaceOptions(selectedValue = "") {
-    const values = uniqueObjectsByName([...getPlaceItems(), { name: selectedValue, sub: "", address: "" }].filter(x => x.name));
-    placeInput.innerHTML =
-      `<option value="">選択してください</option>` +
-      values.map(v => {
-        return `<option value="${escapeAttr(v.name)}">${escapeHtml(v.name)}</option>`;
-      }).join("");
-  }
-
-  function renderCompanyOptions(selectedValue = "") {
-    const values = unique([...settings.companies, selectedValue].filter(Boolean));
-    companyInput.innerHTML = `<option value="">選択してください</option>` + values.map(v => `<option value="${escapeAttr(v)}">${escapeHtml(v)}</option>`).join("");
-  }
-
-  function renderStaffOptions(selectedValue = "") {
-    const values = unique([...settings.staffs, selectedValue].filter(Boolean));
-    staffInput.innerHTML = `<option value="">選択してください</option>` + values.map(v => `<option value="${escapeAttr(v)}">${escapeHtml(v)}</option>`).join("");
-  }
-
-  function renderContentOptions(selectedValue = "") {
-    const values = unique([...settings.contents, selectedValue].filter(Boolean));
-    contentInput.innerHTML = `<option value="">選択してください</option>` + values.map(v => `<option value="${escapeAttr(v)}">${escapeHtml(v)}</option>`).join("");
-  }
-
-  function renderPeopleOptions(selectedValue = "") {
-    let html = `<option value="">未入力</option>`;
-    for (let i = 1; i <= 20; i++) html += `<option value="${i}">${i}名</option>`;
-    peopleInput.innerHTML = html;
-    peopleInput.value = selectedValue || "";
-  }
-
-  function setupPlaceAddDeleteButton() {
-    const btn = document.getElementById("addPlaceBtn");
-    let timer = null;
-    let longPressed = false;
-
-    btn.addEventListener("click", () => {
-      if (longPressed) {
-        longPressed = false;
-        return;
-      }
-
-      const name = prompt("場所・物件を追加", "");
-      if (!name || !name.trim()) return;
-
-      const sub = prompt("建物名・屋号など", "") || "";
-      const address = prompt("住所・番号など", "") || "";
-      const key = prompt("鍵番号", "") || "";
-
-      upsertPlaceItem({
-        name: name.trim(),
-        sub: sub.trim(),
-        address: address.trim(),
-        key: key.trim()
-      });
-
-      renderPlaceOptions(name.trim());
-      placeInput.value = name.trim();
-    });
-
-    btn.addEventListener("pointerdown", () => {
-      longPressed = false;
-      timer = setTimeout(() => {
-        longPressed = true;
-        editSelectedPlaceItem();
-      }, 650);
-    });
-
-    btn.addEventListener("pointerup", () => clearTimeout(timer));
-    btn.addEventListener("pointercancel", () => clearTimeout(timer));
-    btn.addEventListener("pointerleave", () => clearTimeout(timer));
-  }
-
-  function editSelectedPlaceItem() {
-    const oldName = placeInput.value;
-    if (!oldName) {
-      alert("編集する場所を選択してください。");
-      return;
-    }
-
-    const current = getPlaceItem(oldName) || {
-      name: oldName,
-      sub: "",
-      address: "",
-      key: ""
-    };
-
-    const newNameRaw = prompt("場所・物件を編集\n※空にしてOKを押すと削除", current.name);
-    if (newNameRaw === null) return;
-
-    const newName = newNameRaw.trim();
-
-    if (!newName) {
-      deletePlaceItemByName(oldName);
-      return;
-    }
-
-    const newSub = prompt("建物名・屋号など", current.sub || "") ?? current.sub ?? "";
-    const newAddress = prompt("住所・番号など", current.address || "") ?? current.address ?? "";
-    const newKey = prompt("鍵番号", current.key || "") ?? current.key ?? "";
-
-    const edited = {
-      name: newName,
-      sub: String(newSub).trim(),
-      address: String(newAddress).trim(),
-      key: String(newKey).trim()
-    };
-
-    settings.placeItems = settings.placeItems.filter(item => item.name !== oldName);
-    settings.placeItems.push(edited);
-    saveSettings();
-
-    events = events.map(ev => {
-      if (ev.place !== oldName) return ev;
-      return {
-        ...ev,
-        place: edited.name,
-        placeSub: edited.sub,
-        placeAddress: edited.address,
-        keyNumber: edited.key
-      };
-    });
-    saveEvents();
-
-    renderPlaceOptions(edited.name);
-    placeInput.value = edited.name;
-    render();
-  }
-
-  function deletePlaceItemByName(name) {
-    if (!confirm(`「${name}」を場所リストから削除しますか？\n建物名・番号・鍵番号の紐づく設定も削除されます。`)) return;
-
-    settings.placeItems = settings.placeItems.filter(item => item.name !== name);
-    saveSettings();
-
-    events = events.map(ev => {
-      if (ev.place !== name) return ev;
-      return {
-        ...ev,
-        placeSub: "",
-        placeAddress: "",
-        keyNumber: ""
-      };
-    });
-    saveEvents();
-
-    placeInput.value = "";
-    renderPlaceOptions("");
-    render();
-  }
-
-  function upsertPlaceItem(item) {
-    const index = settings.placeItems.findIndex(x => x.name === item.name);
-    if (index >= 0) settings.placeItems[index] = item;
-    else settings.placeItems.push(item);
-    saveSettings();
-  }
-
-  function deleteSelectedPlaceItem() {
-    const value = placeInput.value;
-    if (!value) return;
-    deletePlaceItemByName(value);
-  }
-
-  function setupAddDeleteButton(buttonId, type, promptText, selectEl, renderFn) {
-    const btn = document.getElementById(buttonId);
-    let timer = null;
-    let longPressed = false;
-
-    btn.addEventListener("click", () => {
-      if (longPressed) {
-        longPressed = false;
-        return;
-      }
-      const name = prompt(promptText, "");
-      if (!name || !name.trim()) return;
-      addOption(type, name.trim());
-      renderFn(name.trim());
-      selectEl.value = name.trim();
-    });
-
-    btn.addEventListener("pointerdown", () => {
-      longPressed = false;
-      timer = setTimeout(() => {
-        longPressed = true;
-        editSelectedOption(type, selectEl, renderFn);
-      }, 650);
-    });
-
-    btn.addEventListener("pointerup", () => clearTimeout(timer));
-    btn.addEventListener("pointercancel", () => clearTimeout(timer));
-    btn.addEventListener("pointerleave", () => clearTimeout(timer));
-  }
-
-  function editSelectedOption(type, selectEl, renderFn) {
-    const oldValue = selectEl.value;
-    if (!oldValue) {
-      alert("編集する項目を選択してください。");
-      return;
-    }
-
-    const newValueRaw = prompt("項目を編集\n※空にしてOKを押すと削除", oldValue);
-    if (newValueRaw === null) return;
-
-    const newValue = newValueRaw.trim();
-
-    if (!newValue) {
-      deleteOptionByValue(type, oldValue, selectEl, renderFn);
-      return;
-    }
-
-    settings[type] = unique(settings[type].map(v => v === oldValue ? newValue : v));
-    saveSettings();
-
-    if (type === "companies") {
-      events = events.map(ev => ev.company === oldValue ? { ...ev, company: newValue } : ev);
-      companyInput.value = newValue;
-    }
-
-    if (type === "contents") {
-      events = events.map(ev => ev.content === oldValue ? { ...ev, content: newValue } : ev);
-      contentInput.value = newValue;
-    }
-
-    if (type === "staffs") {
-      events = events.map(ev => ev.staff === oldValue ? { ...ev, staff: newValue } : ev);
-      staffInput.value = newValue;
-    }
-
-    saveEvents();
-    renderFn(newValue);
-    selectEl.value = newValue;
-    render();
-  }
-
-  function deleteOptionByValue(type, value, selectEl, renderFn) {
-    if (!confirm(`「${value}」をリストから削除しますか？`)) return;
-
-    settings[type] = settings[type].filter(v => v !== value);
-    saveSettings();
-
-    if (type === "companies") {
-      events = events.map(ev => ev.company === value ? { ...ev, company: "" } : ev);
-    }
-
-    if (type === "contents") {
-      events = events.map(ev => ev.content === value ? { ...ev, content: "" } : ev);
-    }
-
-    if (type === "staffs") {
-      events = events.map(ev => ev.staff === value ? { ...ev, staff: "" } : ev);
-    }
-
-    saveEvents();
-    selectEl.value = "";
-    renderFn("");
-    render();
-  }
-
-  function deleteSelectedOption(type, selectEl, renderFn) {
-    const value = selectEl.value;
-    if (!value) return;
-    deleteOptionByValue(type, value, selectEl, renderFn);
-  }
-
-  function addOption(type, value) {
-    if (!settings[type].includes(value)) {
-      settings[type].push(value);
-      saveSettings();
-    }
-  }
-
-  function loadSettings() {
+  document.getElementById("eventCloseBtn").onclick = closeEventSheet;
+  document.getElementById("eventSaveBtn").onclick = saveEventFromSheet;
+  document.getElementById("eventDeleteBtn").onclick = deleteEventFromSheet;
+  eventSheetBackdrop.addEventListener("click", e => {
+    if (e.target === eventSheetBackdrop) closeEventSheet();
+  });
+
+  document.getElementById("itemCloseBtn").onclick = closeItemSheet;
+  document.getElementById("itemSaveBtn").onclick = saveItemFromSheet;
+  document.getElementById("itemDeleteBtn").onclick = deleteItemFromSheet;
+  itemSheetBackdrop.addEventListener("click", e => {
+    if (e.target === itemSheetBackdrop) closeItemSheet();
+  });
+
+  document.getElementById("activityCloseBtn").onclick = closeActivitySheet;
+  document.getElementById("activitySaveBtn").onclick = saveActivityTimeFromSheet;
+  document.getElementById("activityDeleteBtn").onclick = deleteActivityTimeFromSheet;
+  activitySheetBackdrop.addEventListener("click", e => {
+    if (e.target === activitySheetBackdrop) closeActivitySheet();
+  });
+
+  function loadState() {
     try {
-      const saved = JSON.parse(localStorage.getItem(SETTINGS_KEY));
-      if (saved?.companies && saved?.placeItems) {
+      const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+      if (saved && Array.isArray(saved.items)) {
         return {
-          companies: saved.companies,
-          contents: Array.isArray(saved.contents) ? saved.contents : DEFAULT_CONTENTS.slice(),
-          staffs: Array.isArray(saved.staffs) ? saved.staffs : DEFAULT_STAFFS.slice(),
-          placeItems: saved.placeItems
+          items: saved.items,
+          events: saved.events || {},
+          activityTimes: saved.activityTimes || {}
         };
       }
     } catch {}
 
     return {
-      companies: DEFAULT_COMPANIES.slice(),
-      contents: DEFAULT_CONTENTS.slice(),
-      staffs: DEFAULT_STAFFS.slice(),
-      placeItems: DEFAULT_PLACE_ITEMS.slice()
+      items: DEFAULT_ITEMS.slice(),
+      events: {},
+      activityTimes: {}
     };
   }
 
-  function saveSettings() {
-    try {
-      localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
-    } catch {
-      alert("設定を保存できませんでした。Safari/ChromeでGitHub PagesのURLから開いてください。");
+  function saveState() {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  }
+
+  function renderCalendar(resetScroll = false) {
+    const days = getMonthDates(current);
+    const rows = state.items.length;
+
+    calendarGrid.style.setProperty("--days", days.length);
+    calendarGrid.style.setProperty("--rows", rows);
+    monthTitle.textContent = `${current.getFullYear()}年${current.getMonth() + 1}月`;
+    calendarGrid.innerHTML = "";
+
+    const corner = document.createElement("div");
+    corner.className = "corner";
+    corner.innerHTML = `
+      <span>項目 / 日付</span>
+      <button class="corner-add" id="cornerAddItemBtn" type="button" title="項目追加" aria-label="項目追加">＋</button>
+    `;
+    calendarGrid.appendChild(corner);
+
+    corner.querySelector("#cornerAddItemBtn").onclick = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      openItemSheet();
+    };
+
+    for (const date of days) {
+      const head = document.createElement("div");
+      const dateStr = toDateString(date);
+      const day = date.getDay();
+
+      head.className = "date-head" + (isToday(date) ? " today" : "") + (day === 0 ? " sun" : "") + (day === 6 ? " sat" : "");
+      head.dataset.date = dateStr;
+      head.innerHTML = `
+        <div>
+          <div class="date-num">${date.getDate()}日</div>
+          <div class="date-week">${["日","月","火","水","木","金","土"][day]}</div>
+        </div>
+      `;
+      head.onclick = () => scrollToDate(dateStr);
+      calendarGrid.appendChild(head);
     }
+
+    state.items.forEach(item => {
+      const left = document.createElement("div");
+      left.className = "left-cell" + (item.type === "activity" ? " activity" : "");
+      left.innerHTML = item.type === "activity"
+        ? `<div class="item-name">活動時間</div><div class="item-sub">その日1日の開始・終了</div>`
+        : `
+          <div class="item-name">${escapeHtml(item.name)}</div>
+          ${(item.sub || item.address) ? `<div class="item-sub">${escapeHtml([item.sub, item.address].filter(Boolean).join(" "))}</div>` : ""}
+          ${item.key ? `<div class="item-key">（${escapeHtml(item.key)}）</div>` : ""}
+        `;
+      setupLongPress(left, () => {
+        if (item.type === "activity") return;
+        openItemSheet(item);
+      });
+      calendarGrid.appendChild(left);
+
+      for (const date of days) {
+        const dateStr = toDateString(date);
+        const cell = document.createElement("div");
+        cell.className = "cal-cell";
+        cell.dataset.date = dateStr;
+        cell.dataset.itemId = item.id;
+
+        if (item.type === "activity") {
+          const time = state.activityTimes[dateStr];
+          cell.innerHTML = renderActivityCell(time);
+          if (time?.start || time?.end) cell.classList.add("has-event");
+
+        } else {
+          const ev = getEvent(dateStr, item.id);
+          cell.innerHTML = renderEventCell(ev);
+          if (ev) cell.classList.add("has-event");
+
+        }
+
+        calendarGrid.appendChild(cell);
+      }
+    });
+
+    if (resetScroll) {
+      setTimeout(() => scrollToDate(toDateString(new Date(current.getFullYear(), current.getMonth(), 1))), 0);
+    }
+  }
+
+  function getMonthDates(baseDate) {
+    const start = new Date(baseDate.getFullYear(), baseDate.getMonth(), 1);
+    const end = new Date(baseDate.getFullYear(), baseDate.getMonth() + 1, 0);
+    const result = [];
+    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+      result.push(new Date(d));
+    }
+    return result;
+  }
+
+  function renderActivityCell(time) {
+    if (!time || (!time.start && !time.end)) {
+      return `<div class="activity-card">＋</div>`;
+    }
+
+    return `<div class="activity-card has-time">
+      <div>${escapeHtml(time.start || "--:--")}</div>
+      <div class="activity-tilde">～</div>
+      <div>${escapeHtml(time.end || "--:--")}</div>
+    </div>`;
+  }
+
+  function renderEventCell(ev) {
+    if (!ev) return "";
+    const color = ev.color || COLORS[0];
+
+    return `
+      <div class="mini-card" style="--card-color:${escapeAttr(color)}">
+        ${ev.people ? `<div class="mini-content">${escapeHtml(ev.people)}名</div>` : `<div class="mini-content mini-placeholder">予定</div>`}
+        ${ev.user ? `<div class="mini-line">${escapeHtml(formatUserName(ev.user))}</div>` : ""}
+      </div>
+    `;
+  }
+
+  function eventKey(dateStr, itemId) {
+    return `${dateStr}|${itemId}`;
+  }
+
+  function getEvent(dateStr, itemId) {
+    return state.events[eventKey(dateStr, itemId)] || null;
+  }
+
+  function openEventSheet(dateStr, itemId) {
+    const item = state.items.find(x => x.id === itemId);
+    const ev = getEvent(dateStr, itemId);
+
+    editingDate.value = dateStr;
+    editingItemId.value = itemId;
+    selectedColor = ev?.color || COLORS[0];
+    renderColorPalette();
+
+    eventUserInput.value = removeSama(ev?.user || "");
+    renderPeopleOptions(ev?.people || "");
+    eventStaffInput.value = ev?.staff || "";
+    eventNoteInput.value = ev?.note || "";
+
+    document.getElementById("eventDeleteBtn").style.visibility = ev ? "visible" : "hidden";
+    eventSheetBackdrop.classList.add("show");
+  }
+
+  function closeEventSheet() {
+    eventSheetBackdrop.classList.remove("show");
+  }
+
+  function saveEventFromSheet() {
+    const dateStr = editingDate.value;
+    const itemId = editingItemId.value;
+    if (!dateStr || !itemId) return;
+
+    const old = getEvent(dateStr, itemId) || {};
+
+    const ev = {
+      date: dateStr,
+      itemId,
+      startTime: "",
+      endTime: "",
+      content: old.content || "",
+      company: old.company || "",
+      user: formatUserName(eventUserInput.value.trim()),
+      people: eventPeopleInput.value,
+      staff: eventStaffInput.value.trim(),
+      note: eventNoteInput.value.trim(),
+      color: selectedColor
+    };
+
+    state.events[eventKey(dateStr, itemId)] = ev;
+    saveState();
+    closeEventSheet();
+    renderCalendar(false);
+  }
+
+  function deleteEventFromSheet() {
+    const dateStr = editingDate.value;
+    const itemId = editingItemId.value;
+    if (!confirm("この予定を削除しますか？")) return;
+
+    delete state.events[eventKey(dateStr, itemId)];
+    saveState();
+    closeEventSheet();
+    renderCalendar(false);
+  }
+
+  function editActivityTime(dateStr) {
+    const currentTime = state.activityTimes[dateStr] || {};
+    activityDateInput.value = dateStr;
+    activityInfoInput.value = dateStr.replaceAll("-", "/");
+    activityStartInput.value = currentTime.start || "";
+    activityEndInput.value = currentTime.end || "";
+    document.getElementById("activityDeleteBtn").style.visibility = currentTime.start || currentTime.end ? "visible" : "hidden";
+    activitySheetBackdrop.classList.add("show");
+  }
+
+  function closeActivitySheet() {
+    activitySheetBackdrop.classList.remove("show");
+  }
+
+  function saveActivityTimeFromSheet() {
+    const dateStr = activityDateInput.value;
+    if (!dateStr) return;
+
+    const start = activityStartInput.value;
+    const end = activityEndInput.value;
+
+    if (!start && !end) {
+      delete state.activityTimes[dateStr];
+    } else {
+      state.activityTimes[dateStr] = { start, end };
+    }
+
+    saveState();
+    closeActivitySheet();
+    renderCalendar(false);
+  }
+
+  function deleteActivityTimeFromSheet() {
+    const dateStr = activityDateInput.value;
+    if (!dateStr) return;
+    delete state.activityTimes[dateStr];
+    saveState();
+    closeActivitySheet();
+    renderCalendar(false);
+  }
+
+  function openItemSheet(item = null) {
+    document.getElementById("itemSheetTitle").textContent = item ? "項目を編集" : "項目を追加";
+    editingItemSheetId.value = item?.id || "";
+    itemNameInput.value = item?.name || "";
+    itemSubInput.value = item?.sub || "";
+    itemAddressInput.value = item?.address || "";
+    itemKeyInput.value = item?.key || "";
+    document.getElementById("itemDeleteBtn").style.visibility = item ? "visible" : "hidden";
+    itemSheetBackdrop.classList.add("show");
+  }
+
+  function closeItemSheet() {
+    itemSheetBackdrop.classList.remove("show");
+  }
+
+  function saveItemFromSheet() {
+    const id = editingItemSheetId.value;
+    const name = itemNameInput.value.trim();
+
+    if (id && !name) {
+      deleteItemById(id);
+      closeItemSheet();
+      return;
+    }
+
+    if (!name) {
+      alert("場所・物件を入力してください。");
+      return;
+    }
+
+    const item = {
+      id: id || makeId("place"),
+      type: "place",
+      name,
+      sub: itemSubInput.value.trim(),
+      address: itemAddressInput.value.trim(),
+      key: itemKeyInput.value.trim()
+    };
+
+    const idx = state.items.findIndex(x => x.id === item.id);
+    if (idx >= 0) state.items[idx] = item;
+    else state.items.push(item);
+
+    saveState();
+    closeItemSheet();
+    renderCalendar(false);
+  }
+
+  function deleteItemFromSheet() {
+    const id = editingItemSheetId.value;
+    if (!id) return;
+
+    const item = state.items.find(x => x.id === id);
+    if (!item || item.type === "activity") return;
+
+    if (!confirm(`「${item.name}」を削除しますか？\nこの項目の予定も削除されます。`)) return;
+    deleteItemById(id);
+    closeItemSheet();
+  }
+
+  function deleteItemById(id) {
+    state.items = state.items.filter(x => x.id !== id);
+    Object.keys(state.events).forEach(key => {
+      if (key.endsWith("|" + id)) delete state.events[key];
+    });
+    saveState();
+    renderCalendar(false);
+  }
+
+  function renderColorPalette() {
+    colorPalette.innerHTML = "";
+    COLORS.forEach(color => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "color-dot" + (selectedColor === color ? " selected" : "");
+      btn.style.setProperty("--dot", color);
+      btn.onclick = () => {
+        selectedColor = color;
+        renderColorPalette();
+      };
+      colorPalette.appendChild(btn);
+    });
+  }
+
+  function renderPeopleOptions(value = "") {
+    let html = `<option value="">未入力</option>`;
+    for (let i = 1; i <= 20; i++) html += `<option value="${i}">${i}名</option>`;
+    eventPeopleInput.innerHTML = html;
+    eventPeopleInput.value = value || "";
+  }
+
+  function setupLongPress(el, callback) {
+    let timer = null;
+    el.addEventListener("pointerdown", () => {
+      el.classList.add("long-pressing");
+      timer = setTimeout(() => {
+        el.classList.remove("long-pressing");
+        callback();
+      }, 650);
+    });
+
+    ["pointermove", "pointerup", "pointercancel", "pointerleave"].forEach(type => {
+      el.addEventListener(type, () => {
+        clearTimeout(timer);
+        el.classList.remove("long-pressing");
+      });
+    });
+  }
+
+
+  function setupCellTapHandler() {
+    let downCell = null;
+    let startX = 0;
+    let startY = 0;
+    let startScrollLeft = 0;
+    let startScrollTop = 0;
+    let lastOpenAt = 0;
+
+    function openCell(cell) {
+      if (!cell) return;
+
+      // 二重発火防止
+      const now = Date.now();
+      if (now - lastOpenAt < 250) return;
+      lastOpenAt = now;
+
+      const dateStr = cell.dataset.date;
+      const itemId = cell.dataset.itemId;
+      if (!dateStr || !itemId) return;
+
+      const item = state.items.find(x => x.id === itemId);
+      if (item?.type === "activity") {
+        editActivityTime(dateStr);
+      } else {
+        openEventSheet(dateStr, itemId);
+      }
+    }
+
+    function rememberDown(e) {
+      const cell = e.target.closest(".cal-cell");
+      if (!cell) {
+        downCell = null;
+        return;
+      }
+
+      downCell = cell;
+      startX = e.clientX ?? (e.touches && e.touches[0]?.clientX) ?? 0;
+      startY = e.clientY ?? (e.touches && e.touches[0]?.clientY) ?? 0;
+      startScrollLeft = calendarScroll.scrollLeft;
+      startScrollTop = calendarScroll.scrollTop;
+    }
+
+    function maybeOpenFromUp(e) {
+      if (!downCell) return;
+
+      const x = e.clientX ?? (e.changedTouches && e.changedTouches[0]?.clientX) ?? startX;
+      const y = e.clientY ?? (e.changedTouches && e.changedTouches[0]?.clientY) ?? startY;
+
+      const dx = Math.abs(x - startX);
+      const dy = Math.abs(y - startY);
+      const scrollDx = Math.abs(calendarScroll.scrollLeft - startScrollLeft);
+      const scrollDy = Math.abs(calendarScroll.scrollTop - startScrollTop);
+
+      const cell = downCell;
+      downCell = null;
+
+      // 横スクロール・縦スクロールした場合は開かない。軽い指ブレだけなら開く。
+      if (dx > 12 || dy > 12 || scrollDx > 12 || scrollDy > 12) return;
+
+      e.preventDefault();
+      e.stopPropagation();
+      openCell(cell);
+    }
+
+    // Pointer Events 対応ブラウザ用
+    calendarGrid.addEventListener("pointerdown", rememberDown, true);
+    calendarGrid.addEventListener("pointerup", maybeOpenFromUp, true);
+    calendarGrid.addEventListener("pointercancel", () => {
+      downCell = null;
+    }, true);
+
+    // iOS Safari などで pointer/click が不安定な場合の保険
+    calendarGrid.addEventListener("touchstart", rememberDown, { capture: true, passive: true });
+    calendarGrid.addEventListener("touchend", maybeOpenFromUp, { capture: true, passive: false });
+    calendarGrid.addEventListener("touchcancel", () => {
+      downCell = null;
+    }, true);
+
+    // 最後の保険：通常clickでも開く
+    calendarGrid.addEventListener("click", (e) => {
+      if (calendarScroll.dataset.suppressClick === "1") return;
+
+      const cell = e.target.closest(".cal-cell");
+      if (!cell) return;
+
+      e.preventDefault();
+      e.stopPropagation();
+      openCell(cell);
+    }, true);
+  }
+
+  function setupCalendarDragScroll() {
+    let isDown = false;
+    let startX = 0;
+    let startY = 0;
+    let startScrollLeft = 0;
+    let startScrollTop = 0;
+    let moved = false;
+    let activePointerId = null;
+    let startOnLeftColumn = false;
+
+    let lastX = 0;
+    let lastT = 0;
+    let velocity = 0;
+    let rafId = null;
+
+    function cancelMomentum() {
+      if (rafId !== null) {
+        cancelAnimationFrame(rafId);
+        rafId = null;
+      }
+    }
+
+    function startMomentum(v) {
+      cancelMomentum();
+      velocity = v;
+
+      function step() {
+        if (Math.abs(velocity) < 0.04) {
+          velocity = 0;
+          return;
+        }
+
+        calendarScroll.scrollLeft += velocity * 16;
+        velocity *= 0.88;
+        rafId = requestAnimationFrame(step);
+      }
+
+      rafId = requestAnimationFrame(step);
+    }
+
+    // PCで文字やセルを掴むのを防ぐ
+    calendarScroll.addEventListener("dragstart", (e) => e.preventDefault());
+    calendarScroll.addEventListener("selectstart", (e) => {
+      if (isDown) e.preventDefault();
+    });
+
+    calendarScroll.addEventListener("pointerdown", (e) => {
+      // スマホ/タブレットのタッチは標準スクロールに任せる。
+      // これでセルタップが「掴むモード」になりにくくなる。
+      if (e.pointerType !== "mouse") return;
+
+      if (e.target.closest("button, input, select, textarea")) return;
+      if (e.button !== 0) return;
+
+      cancelMomentum();
+      isDown = true;
+      moved = false;
+      activePointerId = e.pointerId;
+      startX = lastX = e.clientX;
+      startY = e.clientY;
+      lastT = e.timeStamp;
+      startScrollLeft = calendarScroll.scrollLeft;
+      startScrollTop = calendarScroll.scrollTop;
+      startOnLeftColumn = !!e.target.closest(".left-cell, .corner");
+      velocity = 0;
+      calendarScroll.dataset.downDate = e.target.closest(".cal-cell")?.dataset.date || "";
+      calendarScroll.dataset.downItemId = e.target.closest(".cal-cell")?.dataset.itemId || "";
+
+      calendarScroll.classList.add("dragging");
+
+      try { calendarScroll.setPointerCapture(e.pointerId); } catch {}
+    });
+
+    calendarScroll.addEventListener("pointermove", (e) => {
+      if (!isDown || e.pointerId !== activePointerId) return;
+
+      const dx = e.clientX - startX;
+      const dy = e.clientY - startY;
+
+      if (Math.abs(dx) > 5 || Math.abs(dy) > 5) moved = true;
+
+      if (moved) {
+        const dt = e.timeStamp - lastT || 1;
+        velocity = -(e.clientX - lastX) / dt;
+        lastX = e.clientX;
+        lastT = e.timeStamp;
+
+        calendarScroll.scrollLeft = startScrollLeft - dx;
+
+        // 縦方向のスクロールは左の項目列/項目日付セルから始めた時だけ動かす
+        if (startOnLeftColumn) {
+          calendarScroll.scrollTop = startScrollTop - dy;
+        }
+
+        e.preventDefault();
+      }
+    }, { passive: false });
+
+    calendarScroll.addEventListener("pointerup", (e) => {
+      if (!isDown || e.pointerId !== activePointerId) return;
+
+      const wasMoved = moved;
+      isDown = false;
+      moved = false;
+      activePointerId = null;
+      startOnLeftColumn = false;
+      calendarScroll.classList.remove("dragging");
+
+      try { calendarScroll.releasePointerCapture(e.pointerId); } catch {}
+
+      if (wasMoved) {
+        calendarScroll.dataset.suppressClick = "1";
+        setTimeout(() => {
+          delete calendarScroll.dataset.suppressClick;
+        }, 250);
+        startMomentum(velocity);
+      } else {
+        const dateStr = calendarScroll.dataset.downDate;
+        const itemId = calendarScroll.dataset.downItemId;
+
+        delete calendarScroll.dataset.downDate;
+        delete calendarScroll.dataset.downItemId;
+
+        if (dateStr && itemId) {
+          const item = state.items.find(x => x.id === itemId);
+          if (item?.type === "activity") {
+            editActivityTime(dateStr);
+          } else {
+            openEventSheet(dateStr, itemId);
+          }
+        }
+      }
+    });
+
+    calendarScroll.addEventListener("click", (e) => {
+      if (calendarScroll.dataset.suppressClick === "1") {
+        e.preventDefault();
+        e.stopPropagation();
+        delete calendarScroll.dataset.suppressClick;
+      }
+    }, true);
+
+    calendarScroll.addEventListener("pointercancel", () => {
+      isDown = false;
+      moved = false;
+      activePointerId = null;
+      startOnLeftColumn = false;
+      calendarScroll.classList.remove("dragging");
+      delete calendarScroll.dataset.downDate;
+      delete calendarScroll.dataset.downItemId;
+      cancelMomentum();
+    });
+
+    calendarScroll.addEventListener("wheel", (e) => {
+      const onLeftColumn = !!e.target.closest(".left-cell, .corner");
+
+      // 左列上だけ縦スクロールを許可
+      if (onLeftColumn) {
+        return;
+      }
+
+      // カレンダー本体では縦ホイールを横移動に変換
+      if (Math.abs(e.deltaY) > Math.abs(e.deltaX) && !e.shiftKey) {
+        calendarScroll.scrollLeft += e.deltaY;
+        e.preventDefault();
+      }
+    }, { passive: false });
+  }
+
+  function scrollToDate(dateStr) {
+    const target = calendarGrid.querySelector(`.date-head[data-date="${dateStr}"]`);
+    if (!target) return;
+    calendarScroll.scrollLeft = Math.max(0, target.offsetLeft - parseInt(getComputedStyle(document.documentElement).getPropertyValue("--leftw")));
   }
 
   function exportBackup() {
     const data = {
-      app: "Schedule Board",
-      version: 46,
+      app: "Cleaning Calendar Grid",
+      version: 1,
       exportedAt: new Date().toISOString(),
-      settings,
-      events
+      state
     };
 
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = `schedule_backup_${toDateString(new Date())}.json`;
+    a.download = `cleaning_calendar_backup_${toDateString(new Date())}.json`;
     a.click();
     URL.revokeObjectURL(a.href);
   }
@@ -1420,108 +1376,25 @@
     try {
       const text = await file.text();
       const data = JSON.parse(text);
-      const importedEvents = Array.isArray(data) ? data : data.events;
+      const imported = data.state || data;
 
-      if (!Array.isArray(importedEvents)) throw new Error("events が見つかりません");
-      if (!confirm("現在の予定をバックアップ内容で置き換えますか？")) return;
+      if (!imported || !Array.isArray(imported.items)) throw new Error("invalid");
+      if (!confirm("現在のデータをバックアップ内容で置き換えますか？")) return;
 
-      events = importedEvents.map(normalizeEvent);
+      state = {
+        items: imported.items,
+        events: imported.events || {},
+        activityTimes: imported.activityTimes || {}
+      };
 
-      if (data.settings) {
-        settings = {
-          companies: Array.isArray(data.settings.companies) ? data.settings.companies : settings.companies,
-          contents: Array.isArray(data.settings.contents) ? data.settings.contents : settings.contents,
-          staffs: Array.isArray(data.settings.staffs) ? data.settings.staffs : settings.staffs,
-          placeItems: Array.isArray(data.settings.placeItems)
-            ? uniqueObjectsByName(data.settings.placeItems)
-            : settings.placeItems
-        };
-        saveSettings();
-      }
-
-      saveEvents();
-      render();
+      saveState();
+      renderCalendar(true);
       alert("復元しました。");
-    } catch (err) {
+    } catch {
       alert("復元に失敗しました。JSONファイルを確認してください。");
     } finally {
       e.target.value = "";
     }
-  }
-
-  function loadEvents() {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw !== null) {
-        const data = JSON.parse(raw);
-        if (Array.isArray(data)) return data;
-      }
-    } catch {}
-
-    return [];
-  }
-
-  function normalizeEvent(e) {
-    const item = getPlaceItemFromArray(e.place, settings?.placeItems || DEFAULT_PLACE_ITEMS) || {};
-    return {
-      ...e,
-      company: e.company || e.assignee || "",
-      staff: e.staff || "",
-      content: e.content || e.title || "",
-      user: formatUserName(e.user || ""),
-      color: e.color || CARD_COLORS[0],
-      checkinDate: e.checkinDate || e.date || "",
-      checkoutDate: e.checkoutDate || e.date || "",
-      placeSub: e.placeSub || item.sub || "",
-      placeAddress: e.placeAddress || item.address || "",
-      keyNumber: e.keyNumber || item.key || ""
-    };
-  }
-
-  function saveEvents() {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(events));
-    } catch {
-      alert("予定を保存できませんでした。Safari/ChromeでGitHub PagesのURLから開いてください。");
-    }
-  }
-
-  function formatUserName(name) {
-    const n = String(name || "").trim();
-    if (!n) return "";
-    if (n.endsWith("様")) return n;
-    return n + "様";
-  }
-
-  function removeSama(name) {
-    return String(name || "").replace(/様$/, "");
-  }
-
-  function normalizeTimeInput(value) {
-    const raw = String(value || "").trim();
-    if (!raw) return "";
-
-    const normalized = raw.replace("：", ":");
-
-    const compact = normalized.match(/^(\d{1,2})(\d{2})$/);
-    if (compact) {
-      const h = Number(compact[1]);
-      const m = Number(compact[2]);
-      if (h >= 0 && h <= 23 && m >= 0 && m <= 59) {
-        return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
-      }
-    }
-
-    const colon = normalized.match(/^(\d{1,2}):(\d{1,2})$/);
-    if (colon) {
-      const h = Number(colon[1]);
-      const m = Number(colon[2]);
-      if (h >= 0 && h <= 23 && m >= 0 && m <= 59) {
-        return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
-      }
-    }
-
-    return raw;
   }
 
   function toDateString(date) {
@@ -1531,39 +1404,31 @@
     return `${y}-${m}-${d}`;
   }
 
-  function openNativeDatePicker(input) {
-    if (typeof input.showPicker === "function") {
-      input.showPicker();
-    } else {
-      input.focus();
-      input.click();
-    }
+  function isToday(date) {
+    return toDateString(date) === toDateString(new Date());
   }
 
-  function updateDateDisplayLabels() {
-    setDateDisplay(checkinDisplayBtn, checkinInput.value);
-    setDateDisplay(checkoutDisplayBtn, checkoutInput.value);
+  function makeId(prefix = "id") {
+    if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+    return `${prefix}_${Date.now()}_${Math.random().toString(16).slice(2)}`;
   }
 
-  function setDateDisplay(button, dateStr) {
-    if (!dateStr) {
-      button.textContent = "日付を選択";
-      button.classList.add("empty");
-      return;
-    }
-
-    button.textContent = dateStr.replaceAll("-", "/");
-    button.classList.remove("empty");
+  function formatUserName(name) {
+    const n = String(name || "").trim();
+    if (!n) return "";
+    return n.endsWith("様") ? n : n + "様";
   }
 
-  function formatDateLabel(dateStr) {
-    const date = new Date(dateStr + "T00:00:00");
-    const week = ["日","月","火","水","木","金","土"][date.getDay()];
-    return `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日（${week}）`;
+  function removeSama(name) {
+    return String(name || "").replace(/様$/, "");
+  }
+
+  function unique(arr) {
+    return [...new Set(arr.map(v => String(v).trim()).filter(Boolean))];
   }
 
   function escapeHtml(str) {
-    return String(str).replace(/[&<>"']/g, s => ({
+    return String(str ?? "").replace(/[&<>"']/g, s => ({
       "&": "&amp;",
       "<": "&lt;",
       ">": "&gt;",
@@ -1576,339 +1441,10 @@
     return escapeHtml(str).replace(/`/g, "&#096;");
   }
 
-  function unique(arr) {
-    return [...new Set(arr.map(v => String(v).trim()).filter(Boolean))];
-  }
-
-  function uniqueObjectsByName(arr) {
-    const map = new Map();
-    for (const item of arr) {
-      if (!item || !String(item.name || "").trim()) continue;
-      const name = String(item.name).trim();
-      map.set(name, {
-        name,
-        sub: String(item.sub || "").trim(),
-        address: String(item.address || "").trim(),
-        key: String(item.key || "").trim()
-      });
-    }
-    return [...map.values()];
-  }
-
-  function getPlaceItemFromArray(name, arr) {
-    return (arr || []).find(item => item.name === name);
-  }
-
-  function makeId() {
-    if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
-    return "evt_" + Date.now() + "_" + Math.random().toString(16).slice(2);
-  }
-
-  function migrateLocalStorageToStableKeys() {
-    if (!isLocalStorageAvailable()) {
-      alert("この開き方では保存が残らない可能性があります。GitHub PagesなどのURLからSafari/Chromeで開いてください。");
-      return;
-    }
-  }
-
-  function isLocalStorageAvailable() {
-    try {
-      const testKey = "__schedule_storage_test__";
-      localStorage.setItem(testKey, "1");
-      localStorage.removeItem(testKey);
-      return true;
-    } catch {
-      return false;
-    }
-  }
-
-  function monthStart(date) {
-    return new Date(date.getFullYear(), date.getMonth(), 1);
-  }
-
-  function addMonths(date, amount) {
-    return new Date(date.getFullYear(), date.getMonth() + amount, 1);
-  }
-
-  function resetDateWindowAroundCurrent() {
-    renderedStartMonth = monthStart(addMonths(current, -1));
-    renderedEndMonth = monthStart(addMonths(current, 1));
-  }
-
-  function rebuildDateStrip() {
-    dateStrip.innerHTML = "";
-
-    const startDate = new Date(renderedStartMonth);
-    const endDate = new Date(renderedEndMonth.getFullYear(), renderedEndMonth.getMonth() + 1, 0);
-
-    for (let date = new Date(startDate); date <= endDate; date.setDate(date.getDate() + 1)) {
-      dateStrip.appendChild(createDateButton(new Date(date)));
-    }
-  }
-
-  function createDateButton(dateObj) {
-    const dateStr = toDateString(dateObj);
-    const count = events.filter(e => e.date === dateStr).length;
-
-    const btn = document.createElement("button");
-    btn.className =
-      "date-btn" +
-      (dateStr === selectedDate ? " active" : "") +
-      (count > 0 ? " has-events" : "");
-    btn.dataset.date = dateStr;
-
-    btn.innerHTML = `
-      <div class="day">${dateObj.getDate()}</div>
-      <div class="week">${["日","月","火","水","木","金","土"][dateObj.getDay()]}${count ? "・" + count : ""}</div>
-    `;
-
-    return btn;
-  }
-
-  function appendDateMonths(count = 3) {
-    if (isExtendingDateStrip) return;
-    isExtendingDateStrip = true;
-
-    const start = addMonths(renderedEndMonth, 1);
-    const end = addMonths(renderedEndMonth, count);
-    const lastDay = new Date(end.getFullYear(), end.getMonth() + 1, 0);
-
-    const frag = document.createDocumentFragment();
-    for (let date = new Date(start); date <= lastDay; date.setDate(date.getDate() + 1)) {
-      frag.appendChild(createDateButton(new Date(date)));
-    }
-
-    dateStrip.appendChild(frag);
-    renderedEndMonth = monthStart(end);
-    isExtendingDateStrip = false;
-  }
-
-  function prependDateMonths(count = 3) {
-    if (isExtendingDateStrip) return;
-    isExtendingDateStrip = true;
-
-    const oldScrollWidth = dateStrip.scrollWidth;
-
-    const start = addMonths(renderedStartMonth, -count);
-    const end = addMonths(renderedStartMonth, -1);
-    const lastDay = new Date(end.getFullYear(), end.getMonth() + 1, 0);
-
-    const frag = document.createDocumentFragment();
-    for (let date = new Date(start); date <= lastDay; date.setDate(date.getDate() + 1)) {
-      frag.appendChild(createDateButton(new Date(date)));
-    }
-
-    dateStrip.prepend(frag);
-    renderedStartMonth = monthStart(start);
-
-    const addedWidth = dateStrip.scrollWidth - oldScrollWidth;
-    dateStrip.scrollLeft += addedWidth;
-
-    isExtendingDateStrip = false;
-  }
-
-  function ensureDateStripBuffer() {
-    const maxScroll = dateStrip.scrollWidth - dateStrip.clientWidth;
-    const threshold = 900;
-
-    if (dateStrip.scrollLeft > maxScroll - threshold) {
-      appendDateMonths(3);
-    }
-
-    if (dateStrip.scrollLeft < threshold) {
-      prependDateMonths(3);
-    }
-  }
-
-  function updateMonthLabelByStripCenter() {
-    const centerX = dateStrip.scrollLeft + dateStrip.clientWidth / 2;
-    const firstDayButtons = [...dateStrip.querySelectorAll(".date-btn")]
-      .filter(btn => btn.dataset.date && btn.dataset.date.endsWith("-01"));
-
-    let candidate = null;
-
-    for (const btn of firstDayButtons) {
-      const btnCenter = btn.offsetLeft + btn.offsetWidth / 2;
-      if (btnCenter <= centerX) {
-        candidate = btn;
-      } else {
-        break;
-      }
-    }
-
-    if (!candidate && firstDayButtons.length) {
-      candidate = firstDayButtons[0];
-    }
-
-    if (!candidate) return;
-
-    const date = new Date(candidate.dataset.date + "T00:00:00");
-    current = date;
-    monthLabel.textContent = `${date.getFullYear()}年${date.getMonth() + 1}月`;
-  }
-
-  function selectDateWithoutRebuildingStrip(dateStr) {
-    selectedDate = dateStr;
-    current = new Date(dateStr + "T00:00:00");
-    monthLabel.textContent = `${current.getFullYear()}年${current.getMonth() + 1}月`;
-    updateDateActiveStates();
-    renderEvents();
-  }
-
-  function updateDateActiveStates() {
-    const buttons = dateStrip.querySelectorAll(".date-btn");
-    buttons.forEach(btn => {
-      btn.classList.toggle("active", btn.dataset.date === selectedDate);
-    });
-  }
-
-  function scrollCurrentMonthStartIntoView() {
-    const y = current.getFullYear();
-    const m = String(current.getMonth() + 1).padStart(2, "0");
-    const first = dateStrip.querySelector(`[data-date="${y}-${m}-01"]`);
-    if (first) {
-      dateStrip.scrollLeft = Math.max(0, first.offsetLeft - dateStrip.offsetLeft);
-    }
-  }
-
-  // ── 日付ストリップのドラッグスクロール（慣性 + 月またぎ）──────────
-  function setupDateStripDragScroll() {
-    let isDown = false;
-    let startX = 0;
-    let startScrollLeft = 0;
-    let moved = false;
-    let activePointerId = null;
-
-    // 慣性用
-    let lastX = 0;
-    let lastT = 0;
-    let velocity = 0;  // px/ms
-    let rafId = null;
-
-    function cancelMomentum() {
-      if (rafId !== null) { cancelAnimationFrame(rafId); rafId = null; }
-    }
-
-    // 端に近づいたら3か月ずつ追加描画する
-    function checkEdgeOverflow() {
-      ensureDateStripBuffer();
-      updateMonthLabelByStripCenter();
-    }
-
-    function startMomentum(v) {
-      cancelMomentum();
-      velocity = v;
-
-      function step() {
-        if (Math.abs(velocity) < 0.04) { velocity = 0; return; }
-        dateStrip.scrollLeft += velocity * 16;
-        velocity *= 0.88;  // 摩擦係数
-        checkEdgeOverflow();
-        rafId = requestAnimationFrame(step);
-      }
-      rafId = requestAnimationFrame(step);
-    }
-
-    let downDateStr = null; // pointerdown時の日付文字列を記憶
-
-    dateStrip.addEventListener("pointerdown", (e) => {
-      cancelMomentum();
-      isDown = true;
-      moved = false;
-      startX = lastX = e.clientX;
-      lastT = e.timeStamp;
-      startScrollLeft = dateStrip.scrollLeft;
-      activePointerId = e.pointerId;
-      velocity = 0;
-      // setPointerCapture するとpointerup時にe.targetがdateStrip自身になるため
-      // 押した瞬間の日付文字列をここで記憶しておく
-      const btn = e.target.closest(".date-btn");
-      downDateStr = btn ? btn.dataset.date : null;
-      dateStrip.classList.add("dragging");
-      try { dateStrip.setPointerCapture(e.pointerId); } catch {}
-    });
-
-    dateStrip.addEventListener("pointermove", (e) => {
-      if (!isDown || e.pointerId !== activePointerId) return;
-
-      const dx = e.clientX - startX;
-      if (Math.abs(dx) > 6) moved = true;
-
-      if (moved) {
-        // 速度計算（直近フレームの変位）
-        const dt = e.timeStamp - lastT || 1;
-        velocity = -(e.clientX - lastX) / dt;
-        lastX = e.clientX;
-        lastT = e.timeStamp;
-
-        dateStrip.scrollLeft = startScrollLeft - dx;
-        ensureDateStripBuffer();
-        updateMonthLabelByStripCenter();
-      }
-    });
-
-    dateStrip.addEventListener("pointerup", (e) => {
-      if (!isDown || e.pointerId !== activePointerId) return;
-
-      const wasMoved = moved;
-      isDown = false;
-      moved = false;
-      activePointerId = null;
-      dateStrip.classList.remove("dragging");
-      try { dateStrip.releasePointerCapture(e.pointerId); } catch {}
-
-      if (!wasMoved) {
-        if (downDateStr) {
-          selectDateWithoutRebuildingStrip(downDateStr);
-        }
-      } else {
-        // 指を離したら慣性スクロール開始
-        startMomentum(velocity);
-      }
-      downDateStr = null;
-    });
-
-    dateStrip.addEventListener("pointercancel", () => {
-      isDown = false;
-      moved = false;
-      activePointerId = null;
-      dateStrip.classList.remove("dragging");
-      cancelMomentum();
-    });
-
-    dateStrip.addEventListener("scroll", () => {
-      ensureDateStripBuffer();
-      updateMonthLabelByStripCenter();
-    }, { passive: true });
-
-    // トラックパッド・ホイールでも横スクロール（月またぎつき）
-    dateStrip.addEventListener("wheel", (e) => {
-      if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
-        cancelMomentum();
-        dateStrip.scrollLeft += e.deltaY;
-        velocity = e.deltaY / 16;
-        ensureDateStripBuffer();
-        updateMonthLabelByStripCenter();
-        e.preventDefault();
-      }
-    }, { passive: false });
-  }
-
-  function scrollActiveDateIntoView() {
-    const active = document.querySelector(".date-btn.active");
-    if (!active) return;
-
-    const target = active.offsetLeft - dateStrip.offsetLeft - (dateStrip.clientWidth / 2) + (active.clientWidth / 2);
-    dateStrip.scrollLeft = Math.max(0, target);
-    ensureDateStripBuffer();
-    updateMonthLabelByStripCenter();
-  }
-
-  setupDateStripDragScroll();
-  migrateLocalStorageToStableKeys();
-  render();
-  setTimeout(scrollActiveDateIntoView, 100);
+  setupCellTapHandler();
+  setupCalendarDragScroll();
+  renderCalendar(true);
+  setTimeout(() => scrollToDate(toDateString(new Date())), 80);
 </script>
-
 </body>
 </html>
